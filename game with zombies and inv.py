@@ -88,13 +88,13 @@ room_bounds = [
 ]
 
 # Enemy setup
-enemy_rooms = ["Main Hallway", "Ballroom", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
+enemy_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
 enemies = {}
 enemy_speed = 2.9
 
 for room in enemy_rooms:
     enemies[room] = [
-        pygame.Rect(420, 290, 100, 100)
+        pygame.Rect(420, 290, 90, 90)
     ]
 
 # Load item images
@@ -151,6 +151,33 @@ for direction in zombie_images:
     for i in range(len(zombie_images[direction])):
         zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
 
+# Load ghost images (hovering cycle)
+ghost_images = {
+    "left": [
+        pygame.image.load("images/ghost1_left.png"),
+        pygame.image.load("images/ghost2_left.png"),
+        pygame.image.load("images/ghost3_left.png")
+    ],
+    "right": [
+        pygame.image.load("images/ghost1_right.png"),
+        pygame.image.load("images/ghost2_right.png"),
+        pygame.image.load("images/ghost3_right.png")
+    ]
+}
+
+# Scale all ghost images
+for direction in ghost_images:
+    for i in range(len(ghost_images[direction])):
+        ghost_images[direction][i] = pygame.transform.scale(ghost_images[direction][i], (100, 100))
+
+
+ghost_frame = 0
+ghost_anim_timer = 0
+ghost_anim_delay = 250
+
+ghosts = {
+    "Ballroom": [pygame.Rect(200, 200, 80, 80)]
+}
 
 current_room = "Grand Entrance"
 previous_room = None
@@ -349,11 +376,35 @@ while running:
                         if player.top < 30: player.top = 30
                         if player.bottom > SCREEN_HEIGHT - 30: player.bottom = SCREEN_HEIGHT - 31
                 screen.blit(img, enemy)
-                
-            if health <= 0:
-                print("You Died!")
-                running = False
+        
+        # Ghost Code (direction-aware animation added)
+        if current_room in ghosts:
+            if current_time - ghost_anim_timer > ghost_anim_delay:
+                ghost_frame = (ghost_frame + 1) % 3
+                ghost_anim_timer = current_time
 
+            for ghost in ghosts[current_room]:
+                dx, dy = player.x - ghost.x, player.y - ghost.y
+                dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                ghost_speed = 4
+                ghost.x += int(ghost_speed * dx / dist)
+                ghost.y += int(ghost_speed * dy / dist)
+
+                # Determine facing direction
+                face = "right" if player.x > ghost.x else "left"
+
+                # Draw ghost
+                ghost_img = ghost_images[face][ghost_frame]
+                screen.blit(ghost_img, ghost)
+
+                if player.colliderect(ghost):
+                    health -= 1
+                    ghost.x = player.x + int(120 * dx / dist)
+                    ghost.y = player.y + int(120 * dy / dist)
+
+        if health <= 0:
+            print("You Died!")
+            running = False
     pygame.display.flip()
 
     for event in pygame.event.get():
