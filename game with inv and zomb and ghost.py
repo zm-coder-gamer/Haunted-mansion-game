@@ -27,7 +27,7 @@ class Fireball(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.Surface((10, 10))
         self.image.fill((255, 165, 0))  # Orange fireball
-        self.rect = self.image.get_rect(center=(x, 100))
+        self.rect = self.image.get_rect(center=(x, 50))
         self.speed = speed
 
     def update(self):
@@ -40,9 +40,9 @@ def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, do
         return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
 
     fireball_timer += 1
-    if not dodge_goal_achieved and fireball_timer > 15:
-        x = random.randint(210, 590)
-        speed = random.choice([2, 4, 6, 10])
+    if not dodge_goal_achieved and fireball_timer > 8:
+        x = random.randint(70, 740)
+        speed = random.choice([6, 7, 8, 10])
         fireball = Fireball(x, speed)
         fireballs.add(fireball)
         fireball_timer = 0
@@ -74,8 +74,12 @@ def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, do
 fireballs = pygame.sprite.Group()
 fireball_timer = 0
 dodged_fireballs = 0
-dodge_target = 30
+dodge_target = 50
 dodge_goal_achieved = False
+# Fireball Challenge Tracking for Wine Cellar
+wine_cellar_challenge_started = False
+wine_cellar_entry_time = None
+
 
 # Load room images
 rooms = {
@@ -117,12 +121,12 @@ room_exits = {
     "Library": {"north": "Grand Entrance", "south": "Ballroom", "east": "Study"},
     "Study": {"north": "Main Hallway", "south": "Gallery", "west": "Library", "east": "Guest Bedroom"},
     "Guest Bedroom": {"north": "Dining Room", "south": "Servants Quarters", "west": "Study", "east": "Master Bedroom"},
-    "Master Bedroom": {"north": "Kitchen", "south": "Wine Cellar", "west": "Guest Bedroom", "east": "Bathroom"},
+    "Master Bedroom": {"north": "Kitchen","west": "Guest Bedroom", "east": "Bathroom"},
     "Bathroom": {"north": "Pantry", "south": "Basement Storage", "west": "Master Bedroom"},
     "Ballroom": {"north": "Library", "south": "Attic", "east": "Gallery"},
     "Gallery": {"north": "Study", "south": "Secret Passage", "west": "Ballroom", "east": "Servants Quarters"},
     "Servants Quarters": {"north": "Guest Bedroom", "south": "Torture Chamber", "west": "Gallery", "east": "Wine Cellar"},
-    "Wine Cellar": {"north": "Master Bedroom", "west": "Servants Quarters", "east": "Basement Storage"},
+    "Wine Cellar": {"west": "Servants Quarters", "east": "Basement Storage"},
     "Basement Storage": {"north": "Bathroom", "west": "Wine Cellar"},
     "Attic": {"north": "Ballroom", "east": "Secret Passage"},
     "Secret Passage": {"north": "Gallery", "west": "Attic", "east": "Torture Chamber"},
@@ -200,8 +204,8 @@ player_anim_delay = 200  # milliseconds
 # Player setup
 player = pygame.Rect(80, 275, 70, 70)
 player_sprite = PlayerSprite(player)
-player_speed = 5
-health = 1000
+player_speed = 4
+health = 10
 
 # Load zombie images
 zombie_images = {
@@ -225,7 +229,6 @@ for direction in zombie_images:
 # zombie setup
 zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
 zombies = {}
-zombie_speed = 3.8
 
 for room in zombie_rooms:
     zombies[room] = [
@@ -261,10 +264,10 @@ for direction in ghost_images:
 
 ghost_frame = 0
 ghost_anim_timer = 0
-ghost_anim_delay = 250
+ghost_anim_delay = 200
 
 ghosts = {
-    "Ballroom": [pygame.Rect(200, 200, 80, 80)]
+    "Ballroom": [pygame.Rect(300, 300, 80, 80)]
 }
 
 # Inventory setup
@@ -362,7 +365,7 @@ while running:
             for i, rect in enumerate(slot_rects[:len(inventory)]):
                 if inventory_cursor.colliderect(rect):
                     if inventory[i] == "health_potion":
-                        health = min(health + 1, 5)
+                        health = min(health + 2, 10)
                         print("Used health potion")
                         inventory.pop(i)
                         break
@@ -415,19 +418,20 @@ while running:
 
                 # Display idle or walking frame based on room_entry_time
                 time_since_entry = time.time() - room_entry_time
-                if time_since_entry < 0.2:
+                if time_since_entry < 0.35:
                     img = zombie_images[face_dir][0]  # idle
                 else:
                     # Chase logic
                     dx, dy = player.x - zombie.x, player.y - zombie.y
                     distance = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                    zombie_speed = 3
                     zombie.x += int(zombie_speed * dx / distance)
                     zombie.y += int(zombie_speed * dy / distance)
                     img = zombie_images[face_dir][zombie_frame + 1]  # walk animation
 
                     # Collision and knockback
                     if player.colliderect(zombie):
-                        health -= 1
+                        health -= 2
                         knock_dx = int(knockback_force * dx / distance)
                         knock_dy = int(knockback_force * dy / distance)
                         player.x += knock_dx
@@ -448,7 +452,7 @@ while running:
             for ghost in ghosts[current_room]:
                 dx, dy = player.x - ghost.x, player.y - ghost.y
                 dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                ghost_speed = 4
+                ghost_speed = 3.5
                 ghost.x += int(ghost_speed * dx / dist)
                 ghost.y += int(ghost_speed * dy / dist)
 
@@ -461,26 +465,50 @@ while running:
 
                 if player.colliderect(ghost):
                     health -= 1
-                    ghost.x = player.x + int(120 * dx / dist)
-                    ghost.y = player.y + int(120 * dy / dist)
+                    ghost.x = player.x + int(150 * dx / dist)
+                    ghost.y = player.y + int(150 * dy / dist)
 
         if health <= 0:
             print("You Died!")
             running = False
     # Fireball Challenge: Wine Cellar
     if current_room == "Wine Cellar":
-        fireball_timer, dodged_fireballs, dodge_goal_achieved, player_dead = fireball_challenge_logic(
-            current_room, player, fireballs, fireball_timer, dodged_fireballs, dodge_target, dodge_goal_achieved
-        )
-        fireballs.draw(screen)
-        if player_dead:
-            running = False
+            # Fireball Challenge: Wine Cellar
+            if wine_cellar_entry_time is None:
+                wine_cellar_entry_time = time.time()
 
-        font = pygame.font.SysFont(None, 36)
-        target_text = font.render("Target: Dodge 30 fireballs", True, (0, 0, 0))
-        dodged_text = font.render("Dodged: " + str(min(dodged_fireballs, dodge_target)), True, (0, 128, 0))
-        screen.blit(target_text, (10, 40))
-        screen.blit(dodged_text, (10, 70))
+            # Start challenge if player enters center zone or 5s passes
+            if not wine_cellar_challenge_started:
+                if 250 < player.x < 500 or (time.time() - wine_cellar_entry_time) > 5:
+                    wine_cellar_challenge_started = True
+                    # Lock both doors for duration of challenge
+                    for i, (direction, rect, locked) in enumerate(doors["Wine Cellar"]):
+                        if direction in ["west", "east"]:
+                            doors["Wine Cellar"][i] = (direction, rect, True)
+                            locked_doors[("Wine Cellar", direction)] = True
+
+            if wine_cellar_challenge_started:
+                fireball_timer, dodged_fireballs, dodge_goal_achieved, player_dead = fireball_challenge_logic(
+                    current_room, player, fireballs, fireball_timer, dodged_fireballs, dodge_target, dodge_goal_achieved
+                )
+                fireballs.draw(screen)
+
+                if player_dead:
+                    running = False
+
+                font = pygame.font.SysFont(None, 36)
+                target_text = font.render("Target: Dodge 500 fireballs", True, (0, 0, 0))
+                dodged_text = font.render("Dodged: " + str(min(dodged_fireballs, dodge_target)), True, (0, 128, 0))
+                screen.blit(target_text, (10, 40))
+                screen.blit(dodged_text, (10, 70))
+
+                # Unlock doors after challenge completion
+                if dodge_goal_achieved:
+                    for i, (direction, rect, locked) in enumerate(doors["Wine Cellar"]):
+                        if direction in ["west", "east"]:
+                            doors["Wine Cellar"][i] = (direction, rect, False)
+                            locked_doors[("Wine Cellar", direction)] = False
+
 
     pygame.display.flip()
 
@@ -534,6 +562,10 @@ while running:
                 if is_locked:
                     if (current_room, direction) == ("Gallery", "south"):
                         print("This door is locked from the other side.")
+                        break
+                    # Prevent Wine Cellar doors from being opened during challenge
+                    if (current_room == "Wine Cellar" and direction in ["west", "east"] and not dodge_goal_achieved):
+                        print("This door is locked during the challenge.")
                         break
                     elif "key" in inventory:
                         inventory.remove("key")
