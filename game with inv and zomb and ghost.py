@@ -87,13 +87,13 @@ room_bounds = [
     pygame.Rect(SCREEN_WIDTH - wall_thickness, 0, wall_thickness, SCREEN_HEIGHT)
 ]
 
-# Enemy setup
-enemy_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
-enemies = {}
-enemy_speed = 2.9
+# zombie setup
+zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
+zombies = {}
+zombie_speed = 2.9
 
-for room in enemy_rooms:
-    enemies[room] = [
+for room in zombie_rooms:
+    zombies[room] = [
         pygame.Rect(420, 290, 90, 90)
     ]
 
@@ -337,10 +337,10 @@ while running:
                     inventory.append(item_type)
                     items_in_rooms[current_room].remove((item_rect, item_type))
 
-        if current_room in enemies:
-            for index, enemy in enumerate(enemies[current_room]):
+        if current_room in zombies:
+            for index, zombie in enumerate(zombies[current_room]):
                 # Determine facing direction
-                if player.x > enemy.x:
+                if player.x > zombie.x:
                     face_dir = "right"
                 else:
                     face_dir = "left"
@@ -356,15 +356,15 @@ while running:
                     img = zombie_images[face_dir][0]  # idle
                 else:
                     # Chase logic
-                    dx, dy = player.x - enemy.x, player.y - enemy.y
+                    dx, dy = player.x - zombie.x, player.y - zombie.y
                     distance = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    enemy_speed = 2.9
-                    enemy.x += int(enemy_speed * dx / distance)
-                    enemy.y += int(enemy_speed * dy / distance)
+                    zombie_speed = 2.9
+                    zombie.x += int(zombie_speed * dx / distance)
+                    zombie.y += int(zombie_speed * dy / distance)
                     img = zombie_images[face_dir][zombie_frame + 1]  # walk animation
 
                     # Collision and knockback
-                    if player.colliderect(enemy):
+                    if player.colliderect(zombie):
                         health -= 1
                         knock_dx = int(knockback_force * dx / distance)
                         knock_dy = int(knockback_force * dy / distance)
@@ -375,7 +375,7 @@ while running:
                         if player.right > SCREEN_WIDTH - 30: player.right = SCREEN_WIDTH - 31
                         if player.top < 30: player.top = 30
                         if player.bottom > SCREEN_HEIGHT - 30: player.bottom = SCREEN_HEIGHT - 31
-                screen.blit(img, enemy)
+                screen.blit(img, zombie)
         
         # Ghost Code (direction-aware animation added)
         if current_room in ghosts:
@@ -478,7 +478,7 @@ while running:
                             print("Unlocked Gallery's south door from inside")
 
                     current_room = next_room
-                    room_entry_time = time.time() if current_room in enemy_rooms else None
+                    room_entry_time = time.time() if current_room in zombie_rooms else None
                     if direction == "north":
                         player.x, player.y = 375, 475
                     elif direction == "south":
@@ -500,7 +500,7 @@ while running:
             current_room = previous_room
             print(f"Returned to {current_room}")
             previous_room = None
-            room_entry_time = time.time() if current_room in enemy_rooms else None
+            room_entry_time = time.time() if current_room in zombie_rooms else None
 
     clock.tick(60)
 
