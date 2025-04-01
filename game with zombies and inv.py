@@ -91,18 +91,17 @@ room_bounds = [
 enemy_rooms = ["Main Hallway", "Ballroom", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
 enemies = {}
 enemy_speed = 2.9
-room_entry_time = None
 
 for room in enemy_rooms:
     enemies[room] = [
-        pygame.Rect(420, 290, 30, 30)
+        pygame.Rect(420, 290, 100, 100)
     ]
 
 # Load item images
 health_potion_img = pygame.image.load("images/health_potion.png")
 health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
-key_img = pygame.transform.scale(key_img, (40, 40))
+key_img = pygame.transform.scale(key_img, (50, 50))
 
 # Load player images
 player_images = {
@@ -131,7 +130,26 @@ player_images = {
 # Scale all player images
 for direction in player_images:
     for i in range(len(player_images[direction])):
-        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (40, 40))
+        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))
+
+# Load zombie images
+zombie_images = {
+    "left": [
+        pygame.image.load("images/zombie_left.png"),
+        pygame.image.load("images/zleft_run1.png"),
+        pygame.image.load("images/zleft_run2.png")
+    ],
+    "right": [
+        pygame.image.load("images/zombie_right.png"),
+        pygame.image.load("images/zright_run1.png"),
+        pygame.image.load("images/zright_run2.png")
+    ]
+}
+
+# Scale all zombie images
+for direction in zombie_images:
+    for i in range(len(zombie_images[direction])):
+        zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
 
 
 current_room = "Grand Entrance"
@@ -160,16 +178,24 @@ health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (40, 40))
 
-# Player setup
-player = pygame.Rect(100, 300, 40, 40)
-player_speed = 5
-health = 5
-
 # Animation state
 player_facing = "front"
 player_frame = 0
 player_anim_timer = 0
 player_anim_delay = 200  # milliseconds
+
+# Player setup
+player = pygame.Rect(80, 275, 70, 70)
+player_speed = 5
+health = 1000
+
+# Zombie animation state
+zombie_frame = 0
+zombie_anim_timer = 0
+zombie_anim_delay = 300
+zombie_facing = {}  # tracks zombie facing per room
+room_entry_time = time.time()
+knockback_force = 50
 
 # Inventory setup
 inventory = []
@@ -284,24 +310,49 @@ while running:
                     inventory.append(item_type)
                     items_in_rooms[current_room].remove((item_rect, item_type))
 
-        if current_room in enemy_rooms:
-            if room_entry_time and time.time() - room_entry_time >= 0.15:
-                for enemy in enemies[current_room]:
-                    dx, dy = player.x - enemy.x, player.y - enemy.y
-                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    enemy.x += enemy_speed * dx / dist
-                    enemy.y += enemy_speed * dy / dist
+        if current_room in enemies:
+            for index, enemy in enumerate(enemies[current_room]):
+                # Determine facing direction
+                if player.x > enemy.x:
+                    face_dir = "right"
+                else:
+                    face_dir = "left"
+                zombie_facing[index] = face_dir
+                # Animate zombie walk
+                if current_time - zombie_anim_timer > zombie_anim_delay:
+                    zombie_frame = (zombie_frame + 1) % 2
+                    zombie_anim_timer = current_time
 
+                # Display idle or walking frame based on room_entry_time
+                time_since_entry = time.time() - room_entry_time
+                if time_since_entry < 0.2:
+                    img = zombie_images[face_dir][0]  # idle
+                else:
+                    # Chase logic
+                    dx, dy = player.x - enemy.x, player.y - enemy.y
+                    distance = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                    enemy_speed = 2.9
+                    enemy.x += int(enemy_speed * dx / distance)
+                    enemy.y += int(enemy_speed * dy / distance)
+                    img = zombie_images[face_dir][zombie_frame + 1]  # walk animation
+
+                    # Collision and knockback
                     if player.colliderect(enemy):
                         health -= 1
-                        player.x -= 50
-                        player.y -= 50
-                        if health <= 0:
-                            print("You Died!")
-                            running = False
-
-            for enemy in enemies[current_room]:
-                pygame.draw.ellipse(screen, (0, 255, 0), enemy)
+                        knock_dx = int(knockback_force * dx / distance)
+                        knock_dy = int(knockback_force * dy / distance)
+                        player.x += knock_dx
+                        player.y += knock_dy
+                        # Prevent player from being knocked outside bounds
+                        if player.left < 30: player.left = 31
+                        if player.right > SCREEN_WIDTH - 30: player.right = SCREEN_WIDTH - 31
+                        if player.top < 30: player.top = 30
+                        if player.bottom > SCREEN_HEIGHT - 30: player.bottom = SCREEN_HEIGHT - 31
+                screen.blit(img, enemy)
+                
+            if health <= 0:
+                print("You Died!")
+                running = False
 
     pygame.display.flip()
 
@@ -378,13 +429,13 @@ while running:
                     current_room = next_room
                     room_entry_time = time.time() if current_room in enemy_rooms else None
                     if direction == "north":
-                        player.x, player.y = 400, 500
+                        player.x, player.y = 375, 475
                     elif direction == "south":
-                        player.x, player.y = 400, 100
+                        player.x, player.y = 375, 70
                     elif direction == "west":
-                        player.x, player.y = 700, 300
+                        player.x, player.y = 675, 275
                     elif direction == "east":
-                        player.x, player.y = 100, 300
+                        player.x, player.y = 75, 275
                     break
 
     if keys[pygame.K_i] and current_time - last_inventory_toggle > inventory_cooldown:
