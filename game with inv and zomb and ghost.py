@@ -1,6 +1,7 @@
 import pygame
 import json
 import time
+import random
 
 # Initialize pygame
 pygame.init()
@@ -9,6 +10,72 @@ pygame.init()
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Haunted Mansion")
+
+# === Player Sprite Wrapper for Fireball Collision ===
+class PlayerSprite(pygame.sprite.Sprite):
+    def __init__(self, rect_ref):
+        super().__init__()
+        self.rect_ref = rect_ref
+        self.image = pygame.Surface((1, 1))  # Invisible
+        self.rect = rect_ref  # Uses same reference as main player
+    def update(self):
+        self.rect = self.rect_ref  # Keep updated to actual player position
+
+# === Fireball Class ===
+class Fireball(pygame.sprite.Sprite):
+    def __init__(self, x, speed):
+        super().__init__()
+        self.image = pygame.Surface((10, 10))
+        self.image.fill((255, 165, 0))  # Orange fireball
+        self.rect = self.image.get_rect(center=(x, 100))
+        self.speed = speed
+
+    def update(self):
+        self.rect.y += self.speed
+
+# === Fireball Challenge Logic ===
+def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, dodged_fireballs,
+                             dodge_target, dodge_goal_achieved):
+    if current_room != "Wine Cellar":
+        return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
+
+    fireball_timer += 1
+    if not dodge_goal_achieved and fireball_timer > 15:
+        x = random.randint(210, 590)
+        speed = random.choice([2, 4, 6, 10])
+        fireball = Fireball(x, speed)
+        fireballs.add(fireball)
+        fireball_timer = 0
+
+    for fireball in fireballs.sprites():
+        if not dodge_goal_achieved:
+            fireball.update()
+        if fireball.rect.top > SCREEN_HEIGHT:
+            fireball.kill()
+            if not dodge_goal_achieved:
+                dodged_fireballs += 1
+                if dodged_fireballs >= dodge_target:
+                    dodge_goal_achieved = True
+                    fireballs.empty()
+
+    if not dodge_goal_achieved:
+        hits = pygame.sprite.spritecollide(player_sprite, fireballs, True)
+        if hits:
+            global health
+            health -= 1
+            if health <= 0:
+                print("You Died!")
+                fireballs.empty()
+                return fireball_timer, dodged_fireballs, dodge_goal_achieved, True
+
+    return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
+
+# Fireball Challenge State
+fireballs = pygame.sprite.Group()
+fireball_timer = 0
+dodged_fireballs = 0
+dodge_target = 30
+dodge_goal_achieved = False
 
 # Load room images
 rooms = {
@@ -34,10 +101,12 @@ rooms = {
     "Exit Gate": pygame.transform.scale(pygame.image.load("images/Exit Gate.png"), (SCREEN_WIDTH, SCREEN_HEIGHT)),
     "Inventory": pygame.transform.scale(pygame.image.load("images/Inventory.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
 }
-current_room = "Grand Entrance"
+
+current_room = "Grand Entrance" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
+
 # Room dictionaries, values are stored as tuples
 room_exits = {
     "Grand Entrance": {"south": "Library", "east": "Main Hallway"},
@@ -87,16 +156,6 @@ room_bounds = [
     pygame.Rect(SCREEN_WIDTH - wall_thickness, 0, wall_thickness, SCREEN_HEIGHT)
 ]
 
-# zombie setup
-zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
-zombies = {}
-zombie_speed = 2.9
-
-for room in zombie_rooms:
-    zombies[room] = [
-        pygame.Rect(420, 290, 90, 90)
-    ]
-
 # Load item images
 health_potion_img = pygame.image.load("images/health_potion.png")
 health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
@@ -132,6 +191,18 @@ for direction in player_images:
     for i in range(len(player_images[direction])):
         player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))
 
+# Animation state
+player_facing = "front"
+player_frame = 0
+player_anim_timer = 0
+player_anim_delay = 200  # milliseconds
+
+# Player setup
+player = pygame.Rect(80, 275, 70, 70)
+player_sprite = PlayerSprite(player)
+player_speed = 5
+health = 1000
+
 # Load zombie images
 zombie_images = {
     "left": [
@@ -150,6 +221,24 @@ zombie_images = {
 for direction in zombie_images:
     for i in range(len(zombie_images[direction])):
         zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
+
+# zombie setup
+zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
+zombies = {}
+zombie_speed = 3.8
+
+for room in zombie_rooms:
+    zombies[room] = [
+        pygame.Rect(420, 290, 85, 85)
+    ]
+
+# Zombie animation state
+zombie_frame = 0
+zombie_anim_timer = 0
+zombie_anim_delay = 300
+zombie_facing = {}  # tracks zombie facing per room
+room_entry_time = time.time()
+knockback_force = 50
 
 # Load ghost images (hovering cycle)
 ghost_images = {
@@ -170,7 +259,6 @@ for direction in ghost_images:
     for i in range(len(ghost_images[direction])):
         ghost_images[direction][i] = pygame.transform.scale(ghost_images[direction][i], (100, 100))
 
-
 ghost_frame = 0
 ghost_anim_timer = 0
 ghost_anim_delay = 250
@@ -178,11 +266,6 @@ ghost_anim_delay = 250
 ghosts = {
     "Ballroom": [pygame.Rect(200, 200, 80, 80)]
 }
-
-current_room = "Grand Entrance"
-previous_room = None
-last_inventory_toggle = 0
-inventory_cooldown = 300
 
 # Inventory setup
 inventory = []
@@ -198,31 +281,11 @@ items_in_rooms = {
     "Servants Quarters": [(pygame.Rect(450, 450, 30, 30), "key")]
 }
 
-
 # Load item images
 health_potion_img = pygame.image.load("images/health_potion.png")
 health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (40, 40))
-
-# Animation state
-player_facing = "front"
-player_frame = 0
-player_anim_timer = 0
-player_anim_delay = 200  # milliseconds
-
-# Player setup
-player = pygame.Rect(80, 275, 70, 70)
-player_speed = 5
-health = 1000
-
-# Zombie animation state
-zombie_frame = 0
-zombie_anim_timer = 0
-zombie_anim_delay = 300
-zombie_facing = {}  # tracks zombie facing per room
-room_entry_time = time.time()
-knockback_force = 50
 
 # Inventory setup
 inventory = []
@@ -358,7 +421,6 @@ while running:
                     # Chase logic
                     dx, dy = player.x - zombie.x, player.y - zombie.y
                     distance = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    zombie_speed = 2.9
                     zombie.x += int(zombie_speed * dx / distance)
                     zombie.y += int(zombie_speed * dy / distance)
                     img = zombie_images[face_dir][zombie_frame + 1]  # walk animation
@@ -405,6 +467,21 @@ while running:
         if health <= 0:
             print("You Died!")
             running = False
+    # Fireball Challenge: Wine Cellar
+    if current_room == "Wine Cellar":
+        fireball_timer, dodged_fireballs, dodge_goal_achieved, player_dead = fireball_challenge_logic(
+            current_room, player, fireballs, fireball_timer, dodged_fireballs, dodge_target, dodge_goal_achieved
+        )
+        fireballs.draw(screen)
+        if player_dead:
+            running = False
+
+        font = pygame.font.SysFont(None, 36)
+        target_text = font.render("Target: Dodge 30 fireballs", True, (0, 0, 0))
+        dodged_text = font.render("Dodged: " + str(min(dodged_fireballs, dodge_target)), True, (0, 128, 0))
+        screen.blit(target_text, (10, 40))
+        screen.blit(dodged_text, (10, 70))
+
     pygame.display.flip()
 
     for event in pygame.event.get():
