@@ -74,11 +74,32 @@ def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, do
 fireballs = pygame.sprite.Group()
 fireball_timer = 0
 dodged_fireballs = 0
-dodge_target = 50
+dodge_target = 100
 dodge_goal_achieved = False
 # Fireball Challenge Tracking for Wine Cellar
 wine_cellar_challenge_started = False
 wine_cellar_entry_time = None
+
+# === AcidDrop Class ===
+class AcidDrop(pygame.sprite.Sprite):
+    def __init__(self, x, y, speed):
+        super().__init__()
+        self.image = pygame.Surface((10, 10))
+        self.image.fill((0, 255, 0))  # Green acid drop
+        self.rect = self.image.get_rect(center=(x, y))
+        self.speed = speed
+
+    def update(self):
+        self.rect.x += self.speed
+
+# === Acid Rain Challenge State ===
+acid_drops = pygame.sprite.Group()
+acid_timer = 0
+acid_dodged = 0
+acid_dodge_target = 200
+acid_challenge_started = False
+acid_challenge_completed = False
+acid_challenge_entry_time = None
 
 
 # Load room images
@@ -539,7 +560,7 @@ while running:
                     running = False
 
                 font = pygame.font.SysFont(None, 36)
-                target_text = font.render("Target: Dodge 500 fireballs", True, (0, 0, 0))
+                target_text = font.render("Target: Dodge 100 fireballs", True, (0, 0, 0))
                 dodged_text = font.render("Dodged: " + str(min(dodged_fireballs, dodge_target)), True, (0, 128, 0))
                 screen.blit(target_text, (10, 40))
                 screen.blit(dodged_text, (10, 70))
@@ -550,8 +571,55 @@ while running:
                         if direction in ["west", "east"]:
                             doors["Wine Cellar"][i] = (direction, rect, False)
                             locked_doors[("Wine Cellar", direction)] = False
+    
+        # Acid Rain Challenge: Garden Courtyard
+    if current_room == "Garden Courtyard":
+        if acid_challenge_entry_time is None:
+            acid_challenge_entry_time = time.time()
 
+        if not acid_challenge_started:
+            if 250 < player.x < 500 or (time.time() - acid_challenge_entry_time) > 5:
+                acid_challenge_started = True
+                # Lock west and east doors
+                for i, (direction, rect, locked) in enumerate(doors["Garden Courtyard"]):
+                    if direction in ["west", "east"]:
+                        doors["Garden Courtyard"][i] = (direction, rect, True)
+                        locked_doors[("Garden Courtyard", direction)] = True
 
+        if acid_challenge_started and not acid_challenge_completed:
+            acid_timer += 1
+            if acid_timer > 10:
+                y = random.randint(50, 550)
+                speed = random.choice([-10, -8, -7, -6, 6, 7, 8, 10])
+                x = 0 if speed > 0 else 800
+                acid_drops.add(AcidDrop(x, y, speed))
+                acid_timer = 0
+
+            acid_drops.update()
+            acid_drops.draw(screen)
+
+            for drop in acid_drops:
+                if drop.rect.right < 0 or drop.rect.left > 800:
+                    acid_dodged += 1
+                    drop.kill()
+
+            hits = pygame.sprite.spritecollide(player_sprite, acid_drops, True)
+            if hits:
+                health -= 1
+                if health <= 0:
+                    running = False
+
+            font = pygame.font.SysFont(None, 28)
+            label = font.render(f"Acid Dodged: {acid_dodged}/{acid_dodge_target}", True, (0, 128, 0))
+            screen.blit(label, (10, 100))
+
+            if acid_dodged >= acid_dodge_target:
+                acid_challenge_completed = True
+                for i, (direction, rect, locked) in enumerate(doors["Garden Courtyard"]):
+                    if direction in ["west", "east"]:
+                        doors["Garden Courtyard"][i] = (direction, rect, False)
+                        locked_doors[("Garden Courtyard", direction)] = False
+                acid_drops.empty()
     
     # Show instruction to press I in Grand Entrance
     if current_room == "Grand Entrance":
