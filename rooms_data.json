@@ -1,0 +1,23 @@
+{
+    "Grand Entrance": {"south": "Library", "east": "Main Hallway"},
+    "Main Hallway": {"west": "Grand Entrance", "east": "Dining Room", "south": "Study"},
+    "Dining Room": {"west": "Main Hallway", "east": "Kitchen", "south": "Guest Bedroom"},
+    "Kitchen": {"west": "Dining Room", "east": "Pantry", "south": "Master Bedroom"},
+    "Pantry": {"west": "Kitchen", "south": "Bathroom"},
+    "Library": {"north": "Grand Entrance", "south": "Ballroom", "east": "Study"},
+    "Study": {"north": "Main Hallway", "south": "Gallery", "west": "Library", "east": "Guest Bedroom"},
+    "Guest Bedroom": {"north": "Dining Room", "south": "Servants Quarters", "west": "Study", "east": "Master Bedroom"},
+    "Master Bedroom": {"north": "Kitchen","west": "Guest Bedroom", "east": "Bathroom"},
+    "Bathroom": {"north": "Pantry", "south": "Basement Storage", "west": "Master Bedroom"},
+    "Ballroom": {"north": "Library", "south": "Attic", "east": "Gallery"},
+    "Gallery": {"north": "Study", "south": "Secret Passage", "west": "Ballroom", "east": "Servants Quarters"},
+    "Servants Quarters": {"north": "Guest Bedroom", "south": "Torture Chamber", "west": "Gallery", "east": "Wine Cellar"},
+    "Wine Cellar": {"west": "Servants Quarters", "east": "Basement Storage"},
+    "Basement Storage": {"north": "Bathroom", "west": "Wine Cellar"},
+    "Attic": {"north": "Ballroom", "east": "Secret Passage"},
+    "Secret Passage": {"north": "Gallery", "west": "Attic", "east": "Torture Chamber"},
+    "Torture Chamber": {"north": "Servants Quarters", "west": "Secret Passage", "east": "Garden Courtyard"},
+    "Garden Courtyard": {"west": "Torture Chamber", "east": "Exit Gate"},
+    "Exit Gate": {"west": "Garden Courtyard"},
+    "Inventory": {}
+}

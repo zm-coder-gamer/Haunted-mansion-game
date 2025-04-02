@@ -132,29 +132,10 @@ last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
 
 # Room dictionaries, values are stored as tuples
-room_exits = {
-    "Grand Entrance": {"south": "Library", "east": "Main Hallway"},
-    "Main Hallway": {"west": "Grand Entrance", "east": "Dining Room", "south": "Study"},
-    "Dining Room": {"west": "Main Hallway", "east": "Kitchen", "south": "Guest Bedroom"},
-    "Kitchen": {"west": "Dining Room", "east": "Pantry", "south": "Master Bedroom"},
-    "Pantry": {"west": "Kitchen", "south": "Bathroom"},
-    "Library": {"north": "Grand Entrance", "south": "Ballroom", "east": "Study"},
-    "Study": {"north": "Main Hallway", "south": "Gallery", "west": "Library", "east": "Guest Bedroom"},
-    "Guest Bedroom": {"north": "Dining Room", "south": "Servants Quarters", "west": "Study", "east": "Master Bedroom"},
-    "Master Bedroom": {"north": "Kitchen","west": "Guest Bedroom", "east": "Bathroom"},
-    "Bathroom": {"north": "Pantry", "south": "Basement Storage", "west": "Master Bedroom"},
-    "Ballroom": {"north": "Library", "south": "Attic", "east": "Gallery"},
-    "Gallery": {"north": "Study", "south": "Secret Passage", "west": "Ballroom", "east": "Servants Quarters"},
-    "Servants Quarters": {"north": "Guest Bedroom", "south": "Torture Chamber", "west": "Gallery", "east": "Wine Cellar"},
-    "Wine Cellar": {"west": "Servants Quarters", "east": "Basement Storage"},
-    "Basement Storage": {"north": "Bathroom", "west": "Wine Cellar"},
-    "Attic": {"north": "Ballroom", "east": "Secret Passage"},
-    "Secret Passage": {"north": "Gallery", "west": "Attic", "east": "Torture Chamber"},
-    "Torture Chamber": {"north": "Servants Quarters", "west": "Secret Passage", "east": "Garden Courtyard"},
-    "Garden Courtyard": {"west": "Torture Chamber", "east": "Exit Gate"},
-    "Exit Gate": {"west": "Garden Courtyard"},
-    "Inventory": {}
-}
+# Load JSON data
+with open("rooms_data.json", "r") as file:
+    room_exits = json.load(file)
+
 
 # Doors setup
 doors = {}
@@ -225,7 +206,7 @@ player_anim_delay = 200  # milliseconds
 player = pygame.Rect(80, 275, 70, 70)
 player_sprite = PlayerSprite(player)
 player_speed = 4
-health = 10
+health = 1000
 
 # Load zombie images
 zombie_images = {
@@ -247,7 +228,7 @@ for direction in zombie_images:
         zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
 
 # zombie setup
-zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Basement Storage", "Kitchen"]
+zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Kitchen"]
 zombies = {}
 
 for room in zombie_rooms:
@@ -505,7 +486,7 @@ while running:
                         if player.bottom > SCREEN_HEIGHT - 30: player.bottom = SCREEN_HEIGHT - 31
                 screen.blit(img, zombie)
         
-        # Ghost Code (direction-aware animation added)
+        # Ghost Code
         if current_room in ghosts:
             if current_time - ghost_anim_timer > ghost_anim_delay:
                 ghost_frame = (ghost_frame + 1) % 3
@@ -514,7 +495,7 @@ while running:
             for ghost in ghosts[current_room]:
                 dx, dy = player.x - ghost.x, player.y - ghost.y
                 dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                ghost_speed = 3.5
+                ghost_speed = 3.2
                 ghost.x += int(ghost_speed * dx / dist)
                 ghost.y += int(ghost_speed * dy / dist)
 
@@ -533,9 +514,141 @@ while running:
         if health <= 0:
             print("You Died!")
             running = False
+    
+        # === Zombie Dodge Challenge: Servants Quarters ===
+        if current_room == "Servants Quarters":
+            if not hasattr(pygame, "_zombie_challenge_initialized"):
+                pygame._zombie_challenge_initialized = True
+                # Lock all doors
+                for i, (direction, rect, locked) in enumerate(doors["Servants Quarters"]):
+                    doors["Servants Quarters"][i] = (direction, rect, True)
+                    locked_doors[("Servants Quarters", direction)] = True
+                # Spawn more zombies
+                zombies["Servants Quarters"] = [
+                    pygame.Rect(100, 100, 85, 85),
+                    pygame.Rect(300, 100, 85, 85),
+                    pygame.Rect(500, 400, 85, 85),
+                    pygame.Rect(200, 300, 85, 85)
+                ]
+
+            if current_room in zombies:
+                for i, zombie in enumerate(zombies[current_room]):
+                    dx, dy = player.x - zombie.x, player.y - zombie.y
+                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                    speed = 2.5
+                    move_x = int(speed * dx / dist)
+                    move_y = int(speed * dy / dist)
+                    test_rect = zombie.move(move_x, move_y)
+
+                    # Collision check with other zombies
+                    collision = False
+                    for j, other in enumerate(zombies[current_room]):
+                        if i != j and test_rect.colliderect(other):
+                            collision = True
+                            break
+
+                    if not collision:
+                        zombie.x += move_x
+                        zombie.y += move_y
+
+
+        # === Ghost Dodge Challenge: Basement Storage ===
+        if current_room == "Basement Storage":
+            if not hasattr(pygame, "_ghost_challenge_initialized"):
+                pygame._ghost_challenge_initialized = True
+                for i, (direction, rect, locked) in enumerate(doors["Basement Storage"]):
+                    doors["Basement Storage"][i] = (direction, rect, True)
+                    locked_doors[("Basement Storage", direction)] = True
+                ghosts["Basement Storage"] = [
+                    pygame.Rect(200, 300, 80, 80),
+                    pygame.Rect(350, 300, 80, 80),
+                    pygame.Rect(500, 300, 80, 80)
+                ]
+
+            if current_room in ghosts:
+                for i, ghost in enumerate(ghosts[current_room]):
+                    dx, dy = player.x - ghost.x, player.y - ghost.y
+                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                    speed = 3.2
+                    ghost.x += int(speed * dx / dist)
+                    ghost.y += int(speed * dy / dist)
+
+                    # Light collision with other ghosts (reduced radius)
+                    for j, other in enumerate(ghosts[current_room]):
+                        if i != j and ghost.colliderect(other.inflate(-40, -40)):
+                            ghost.x -= int(speed * dx / dist)
+                            ghost.y -= int(speed * dy / dist)
+
+
     # Fireball Challenge: Wine Cellar
     if current_room == "Wine Cellar":
-            # Fireball Challenge: Wine Cellar
+            
+        # === Zombie Dodge Challenge: Servants Quarters ===
+        if current_room == "Servants Quarters":
+            if not hasattr(pygame, "_zombie_challenge_initialized"):
+                pygame._zombie_challenge_initialized = True
+                # Lock all doors
+                for i, (direction, rect, locked) in enumerate(doors["Servants Quarters"]):
+                    doors["Servants Quarters"][i] = (direction, rect, True)
+                    locked_doors[("Servants Quarters", direction)] = True
+                # Spawn more zombies
+                zombies["Servants Quarters"] = [
+                    pygame.Rect(100, 100, 85, 85),
+                    pygame.Rect(300, 100, 85, 85),
+                    pygame.Rect(500, 400, 85, 85),
+                    pygame.Rect(200, 300, 85, 85)
+                ]
+
+            if current_room in zombies:
+                for i, zombie in enumerate(zombies[current_room]):
+                    dx, dy = player.x - zombie.x, player.y - zombie.y
+                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                    speed = 2.5
+                    move_x = int(speed * dx / dist)
+                    move_y = int(speed * dy / dist)
+                    test_rect = zombie.move(move_x, move_y)
+
+                    # Collision check with other zombies
+                    collision = False
+                    for j, other in enumerate(zombies[current_room]):
+                        if i != j and test_rect.colliderect(other):
+                            collision = True
+                            break
+
+                    if not collision:
+                        zombie.x += move_x
+                        zombie.y += move_y
+
+
+        # === Ghost Dodge Challenge: Basement Storage ===
+        if current_room == "Basement Storage":
+            if not hasattr(pygame, "_ghost_challenge_initialized"):
+                pygame._ghost_challenge_initialized = True
+                for i, (direction, rect, locked) in enumerate(doors["Basement Storage"]):
+                    doors["Basement Storage"][i] = (direction, rect, True)
+                    locked_doors[("Basement Storage", direction)] = True
+                ghosts["Basement Storage"] = [
+                    pygame.Rect(100, 300, 80, 80),
+                    pygame.Rect(600, 300, 80, 80),
+                    pygame.Rect(300, 150, 80, 80)
+                ]
+
+            if current_room in ghosts:
+                for i, ghost in enumerate(ghosts[current_room]):
+                    dx, dy = player.x - ghost.x, player.y - ghost.y
+                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
+                    speed = 3.2
+                    ghost.x += int(speed * dx / dist)
+                    ghost.y += int(speed * dy / dist)
+
+                    # Light collision with other ghosts (reduced radius)
+                    for j, other in enumerate(ghosts[current_room]):
+                        if i != j and ghost.colliderect(other.inflate(-40, -40)):
+                            ghost.x -= int(speed * dx / dist)
+                            ghost.y -= int(speed * dy / dist)
+
+
+    # Fireball Challenge: Wine Cellar
             if wine_cellar_entry_time is None:
                 wine_cellar_entry_time = time.time()
 
