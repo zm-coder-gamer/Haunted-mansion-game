@@ -319,6 +319,18 @@ for room, door_list in doors.items():
             door_list[i] = (direction, rect, False)  # unlocked
 
 running = True
+
+# Intro prompt state
+I_tracker = 0
+def pressed_I(keys):
+    global I_tracker
+    if keys[pygame.K_i]:
+        I_tracker += 1
+
+inventory_key_pressed = False
+show_inventory_hint = True
+game_start_time = time.time()
+
 clock = pygame.time.Clock()
 
 # Main game loop
@@ -350,8 +362,38 @@ while running:
                     screen.blit(key_img, slot_rect.topleft)
 
         pygame.draw.ellipse(screen, (255, 0, 0), inventory_cursor)
+        # === Display Instructions ===
+        instruction_font = pygame.font.SysFont(None, 24)
+
+        instructions = [
+            "Controls:",
+            "- Move: W A S D",
+            "- Open Doors: Press O while touching a door",
+            "- Inventory: Press I to open/close inventory",
+            "- Interact with items: Move red cursor with WASD, press E to use item",
+            "",
+            "Doors:",
+            "- Green = unlocked",
+            "- Purple = locked (needs a key)",
+            "- Some doors can only be unlocked from the other side",
+            "- Wine Cellar doors lock during the fireball challenge",
+            "",
+            "Gameplay Tips:",
+            "- Touch potions or keys to collect them",
+            "- Health potions restore 2 health when used",
+            "- Use keys on locked doors by pressing O",
+            "- Avoid zombies and ghosts — they hurt!"
+        ]
+
+        text_y = 150
+        for line in instructions:
+            text_surface = instruction_font.render(line, True, (0, 0, 0))
+            screen.blit(text_surface, (30, text_y))
+            text_y += 25  # Line spacing
+
 
         keys = pygame.key.get_pressed()
+        pressed_I(keys)
         if keys[pygame.K_a]:
             inventory_cursor.x -= cursor_speed
         if keys[pygame.K_d]:
@@ -510,6 +552,17 @@ while running:
                             locked_doors[("Wine Cellar", direction)] = False
 
 
+    
+    # Show instruction to press I in Grand Entrance
+    if current_room == "Grand Entrance":
+        hint_font = pygame.font.SysFont(None, 28)
+        if time.time() - game_start_time > 0.75:
+            if I_tracker == 0:
+                hint_text = hint_font.render("Press 'I' to open your inventory and view instructions", True, (0, 0, 0))
+            else:
+                hint_text = hint_font.render(" ", True, (0, 0, 0))
+            screen.blit(hint_text, (200, 290))
+
     pygame.display.flip()
 
     for event in pygame.event.get():
@@ -517,6 +570,7 @@ while running:
             running = False
 
     keys = pygame.key.get_pressed()
+    pressed_I(keys)
     new_x, new_y = player.x, player.y
     moved = False
 
@@ -612,5 +666,4 @@ while running:
             room_entry_time = time.time() if current_room in zombie_rooms else None
 
     clock.tick(60)
-
 pygame.quit()
