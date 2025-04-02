@@ -2,6 +2,7 @@ import pygame
 import json
 import time
 import random
+from my_lib import create_doors
 
 # Initialize pygame
 pygame.init()
@@ -117,20 +118,8 @@ rooms = {}
 for room in all_rooms:
     rooms[room] = pygame.transform.scale(pygame.image.load("images/"+room+".png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-# Doors setup
-doors = {}
-def create_doors():
-    for room, exits in room_exits.items():
-        doors[room] = []
-        if "north" in exits:
-            doors[room].append(("north", pygame.Rect(370, 30, 60, 20)))
-        if "south" in exits:
-            doors[room].append(("south", pygame.Rect(370, 550, 60, 20)))
-        if "west" in exits:
-            doors[room].append(("west", pygame.Rect(30, 270, 20, 60)))
-        if "east" in exits:
-            doors[room].append(("east", pygame.Rect(750, 270, 20, 60)))
-create_doors()
+
+doors = create_doors(room_exits)
 
 # Room boundaries
 wall_thickness = 30

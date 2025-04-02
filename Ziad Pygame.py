@@ -101,6 +101,7 @@ acid_challenge_started = False
 acid_challenge_completed = False
 acid_challenge_entry_time = None
 
+
 # Load room images
 rooms = {
     "Grand Entrance": pygame.transform.scale(pygame.image.load("images/Grand Entrance.png"), (SCREEN_WIDTH, SCREEN_HEIGHT)),
