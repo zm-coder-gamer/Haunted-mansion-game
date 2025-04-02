@@ -3,6 +3,8 @@ import json
 import time
 import random
 from my_lib import create_doors
+from player_sprite import PlayerSprite
+from fireball import Fireball
 
 # Initialize pygame
 pygame.init()
@@ -11,28 +13,6 @@ pygame.init()
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Haunted Mansion")
-
-# === Player Sprite Wrapper for Fireball Collision ===
-class PlayerSprite(pygame.sprite.Sprite):
-    def __init__(self, rect_ref):
-        super().__init__()
-        self.rect_ref = rect_ref
-        self.image = pygame.Surface((1, 1))  # Invisible
-        self.rect = rect_ref  # Uses same reference as main player
-    def update(self):
-        self.rect = self.rect_ref  # Keep updated to actual player position
-
-# === Fireball Class ===
-class Fireball(pygame.sprite.Sprite):
-    def __init__(self, x, speed):
-        super().__init__()
-        self.image = pygame.Surface((10, 10))
-        self.image.fill((255, 165, 0))  # Orange fireball
-        self.rect = self.image.get_rect(center=(x, 50))
-        self.speed = speed
-
-    def update(self):
-        self.rect.y += self.speed
 
 # === Fireball Challenge Logic ===
 def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, dodged_fireballs,
@@ -117,7 +97,6 @@ all_rooms = room_exits.keys()
 rooms = {}
 for room in all_rooms:
     rooms[room] = pygame.transform.scale(pygame.image.load("images/"+room+".png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
-
 
 doors = create_doors(room_exits)
 
