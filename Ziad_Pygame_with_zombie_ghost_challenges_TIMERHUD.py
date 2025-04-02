@@ -17,11 +17,11 @@ pygame.display.set_caption("Haunted Mansion")
 # === Fireball Challenge Logic ===
 def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, dodged_fireballs,
                              dodge_target, dodge_goal_achieved):
-    if current_room != "Wine Cellar":
+    if current_room != "Kitchen":
         return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
 
     fireball_timer += 1
-    if not dodge_goal_achieved and fireball_timer > 8:
+    if not dodge_goal_achieved and fireball_timer > 10:
         x = random.randint(70, 740)
         speed = random.choice([6, 7, 8, 10])
         fireball = Fireball(x, speed)
@@ -156,6 +156,15 @@ player_sprite = PlayerSprite(player)
 player_speed = 4
 health = 1000
 
+# Helper to get adjusted speed per room
+def get_enemy_speed(entity_type, room):
+    if entity_type == "zombie":
+        return 2.01 if room == "Servants Quarters" else 3.2
+    elif entity_type == "ghost":
+        return 2.02 if room == "Basement Storage" else 3.3
+    return 3
+
+
 # Load zombie images
 zombie_images = {
     "left": [
@@ -176,7 +185,7 @@ for direction in zombie_images:
         zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
 
 # zombie setup
-zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Kitchen"]
+zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Wine Cellar", "Gallery"]
 zombies = {}
 
 for room in zombie_rooms:
@@ -225,14 +234,6 @@ max_inventory_slots = 20
 inventory_cursor = pygame.Rect(10, 10, 40, 40)
 cursor_speed = 5
 
-# Items in rooms
-items_in_rooms = {
-    "Grand Entrance": [(pygame.Rect(100, 100, 30, 30), "health_potion")],
-    "Master Bedroom": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
-    "Guest Bedroom": [(pygame.Rect(120, 120, 30, 30), "key")],
-    "Servants Quarters": [(pygame.Rect(450, 450, 30, 30), "key")]
-}
-
 # Load item images
 health_potion_img = pygame.image.load("images/health_potion.png")
 health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
@@ -266,6 +267,18 @@ for room, door_list in doors.items():
             door_list[i] = (direction, rect, True)  # locked
         else:
             door_list[i] = (direction, rect, False)  # unlocked
+
+
+# === Challenge Room Survival Timers ===
+zombie_challenge_started = False
+zombie_challenge_completed = False
+zombie_challenge_start_time = None
+zombie_challenge_duration = 20  # seconds
+
+ghost_challenge_started = False
+ghost_challenge_completed = False
+ghost_challenge_start_time = None
+ghost_challenge_duration = 20  # seconds
 
 running = True
 
@@ -415,14 +428,14 @@ while running:
                     # Chase logic
                     dx, dy = player.x - zombie.x, player.y - zombie.y
                     distance = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    zombie_speed = 3
+                    zombie_speed = get_enemy_speed("zombie", current_room)
                     zombie.x += int(zombie_speed * dx / distance)
                     zombie.y += int(zombie_speed * dy / distance)
                     img = zombie_images[face_dir][zombie_frame + 1]  # walk animation
 
                     # Collision and knockback
                     if player.colliderect(zombie):
-                        health -= 2
+                        health -= 1
                         knock_dx = int(knockback_force * dx / distance)
                         knock_dy = int(knockback_force * dy / distance)
                         player.x += knock_dx
@@ -443,7 +456,7 @@ while running:
             for ghost in ghosts[current_room]:
                 dx, dy = player.x - ghost.x, player.y - ghost.y
                 dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                ghost_speed = 3.2
+                ghost_speed = get_enemy_speed("ghost", current_room)
                 ghost.x += int(ghost_speed * dx / dist)
                 ghost.y += int(ghost_speed * dy / dist)
 
@@ -456,15 +469,32 @@ while running:
 
                 if player.colliderect(ghost):
                     health -= 1
-                    ghost.x = player.x + int(150 * dx / dist)
-                    ghost.y = player.y + int(150 * dy / dist)
+                    ghost.x = player.x + int(180 * dx / dist)
+                    ghost.y = player.y + int(180 * dy / dist)
 
         if health <= 0:
             print("You Died!")
             running = False
     
-        # === Zombie Dodge Challenge: Servants Quarters ===
+        # === Zombie Dodge Challenge: Servants Quarters === #
         if current_room == "Servants Quarters":
+            if not zombie_challenge_started:
+                zombie_challenge_started = True
+                zombie_challenge_start_time = time.time()
+
+            if zombie_challenge_started and not zombie_challenge_completed:
+                if time.time() - zombie_challenge_start_time > zombie_challenge_duration:
+                    zombie_challenge_completed = True
+                    zombies["Servants Quarters"] = []  # clear all zombies
+                    for i, (direction, rect, locked) in enumerate(doors["Servants Quarters"]):
+                        doors["Servants Quarters"][i] = (direction, rect, False)
+                        locked_doors[("Servants Quarters", direction)] = False
+                    # Spawn reward health potion in center
+                    items_in_rooms.setdefault("Servants Quarters", []).append(
+                        (pygame.Rect(380, 280, 30, 30), "health_potion")
+)
+
+
             if not hasattr(pygame, "_zombie_challenge_initialized"):
                 pygame._zombie_challenge_initialized = True
                 # Lock all doors
@@ -473,166 +503,115 @@ while running:
                     locked_doors[("Servants Quarters", direction)] = True
                 # Spawn more zombies
                 zombies["Servants Quarters"] = [
-                    pygame.Rect(100, 100, 85, 85),
-                    pygame.Rect(300, 100, 85, 85),
-                    pygame.Rect(500, 400, 85, 85),
-                    pygame.Rect(200, 300, 85, 85)
+                    pygame.Rect(300, 300, 85, 85),
+                    pygame.Rect(400, 300, 85, 85),
+                    pygame.Rect(600, 300, 85, 85),
                 ]
 
             if current_room in zombies:
+                # Add knockback between zombies
                 for i, zombie in enumerate(zombies[current_room]):
                     dx, dy = player.x - zombie.x, player.y - zombie.y
                     dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    speed = 2.5
+                    speed = get_enemy_speed("zombie", current_room)
                     move_x = int(speed * dx / dist)
                     move_y = int(speed * dy / dist)
-                    test_rect = zombie.move(move_x, move_y)
 
-                    # Collision check with other zombies
-                    collision = False
+                    # Move zombie
+                    zombie.x += move_x
+                    zombie.y += move_y
+
+                    # Check and apply knockback from other zombies
                     for j, other in enumerate(zombies[current_room]):
-                        if i != j and test_rect.colliderect(other):
-                            collision = True
-                            break
-
-                    if not collision:
-                        zombie.x += move_x
-                        zombie.y += move_y
-
+                        if i != j and zombie.colliderect(other):
+                            repel_dx = zombie.x - other.x
+                            repel_dy = zombie.y - other.y
+                            repel_dist = max((repel_dx ** 2 + repel_dy ** 2) ** 0.5, 1)
+                            knockback_strength = 4
+                            zombie.x += int(knockback_strength * repel_dx / repel_dist)
+                            zombie.y += int(knockback_strength * repel_dy / repel_dist)
 
         # === Ghost Dodge Challenge: Basement Storage ===
         if current_room == "Basement Storage":
+            if not ghost_challenge_started:
+                ghost_challenge_started = True
+                ghost_challenge_start_time = time.time()
+
+            if ghost_challenge_started and not ghost_challenge_completed:
+                if time.time() - ghost_challenge_start_time > ghost_challenge_duration:
+                    ghost_challenge_completed = True
+                    ghosts["Basement Storage"] = []  # clear all ghosts
+                    for i, (direction, rect, locked) in enumerate(doors["Basement Storage"]):
+                        doors["Basement Storage"][i] = (direction, rect, False)
+                        locked_doors[("Basement Storage", direction)] = False
+                    # Spawn reward health potion in center
+                    items_in_rooms.setdefault("Basement Storage", []).append((pygame.Rect(380, 280, 30, 30), "health_potion"))
+                        
             if not hasattr(pygame, "_ghost_challenge_initialized"):
                 pygame._ghost_challenge_initialized = True
                 for i, (direction, rect, locked) in enumerate(doors["Basement Storage"]):
                     doors["Basement Storage"][i] = (direction, rect, True)
                     locked_doors[("Basement Storage", direction)] = True
                 ghosts["Basement Storage"] = [
-                    pygame.Rect(200, 300, 80, 80),
-                    pygame.Rect(350, 300, 80, 80),
-                    pygame.Rect(500, 300, 80, 80)
-                ]
+                    pygame.Rect(450, 300, 80, 80),
+                    pygame.Rect(600, 300, 80, 80)]
 
             if current_room in ghosts:
+                # Ghost movement and knockback
                 for i, ghost in enumerate(ghosts[current_room]):
                     dx, dy = player.x - ghost.x, player.y - ghost.y
                     dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    speed = 3.2
+                    speed = get_enemy_speed("ghost", current_room)
                     ghost.x += int(speed * dx / dist)
                     ghost.y += int(speed * dy / dist)
 
-                    # Light collision with other ghosts (reduced radius)
+                    # Repel from other ghosts
                     for j, other in enumerate(ghosts[current_room]):
-                        if i != j and ghost.colliderect(other.inflate(-40, -40)):
-                            ghost.x -= int(speed * dx / dist)
-                            ghost.y -= int(speed * dy / dist)
-
+                        if i != j and ghost.colliderect(other):
+                            repel_dx = ghost.x - other.x
+                            repel_dy = ghost.y - other.y
+                            repel_dist = max((repel_dx ** 2 + repel_dy ** 2) ** 0.5, 1)
+                            knockback_strength = 2
+                            ghost.x += int(knockback_strength * repel_dx / repel_dist)
+                            ghost.y += int(knockback_strength * repel_dy / repel_dist)
 
     # Fireball Challenge: Wine Cellar
-    if current_room == "Wine Cellar":
-            
-        # === Zombie Dodge Challenge: Servants Quarters ===
-        if current_room == "Servants Quarters":
-            if not hasattr(pygame, "_zombie_challenge_initialized"):
-                pygame._zombie_challenge_initialized = True
-                # Lock all doors
-                for i, (direction, rect, locked) in enumerate(doors["Servants Quarters"]):
-                    doors["Servants Quarters"][i] = (direction, rect, True)
-                    locked_doors[("Servants Quarters", direction)] = True
-                # Spawn more zombies
-                zombies["Servants Quarters"] = [
-                    pygame.Rect(100, 100, 85, 85),
-                    pygame.Rect(300, 100, 85, 85),
-                    pygame.Rect(500, 400, 85, 85),
-                    pygame.Rect(200, 300, 85, 85)
-                ]
+    if current_room == "Kitchen":
+        if wine_cellar_entry_time is None:
+            wine_cellar_entry_time = time.time()
 
-            if current_room in zombies:
-                for i, zombie in enumerate(zombies[current_room]):
-                    dx, dy = player.x - zombie.x, player.y - zombie.y
-                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    speed = 2.5
-                    move_x = int(speed * dx / dist)
-                    move_y = int(speed * dy / dist)
-                    test_rect = zombie.move(move_x, move_y)
+        # Start challenge if player enters center zone or 5s passes
+        if not wine_cellar_challenge_started:
+            if 250 < player.x < 500 or (time.time() - wine_cellar_entry_time) > 5:
+                wine_cellar_challenge_started = True
+                # Lock both doors for duration of challenge
+                for i, (direction, rect, locked) in enumerate(doors["Kitchen"]):
+                    if direction in ["west", "east", "south"]:
+                        doors["Kitchen"][i] = (direction, rect, True)
+                        locked_doors[("Kitchen", direction)] = True
 
-                    # Collision check with other zombies
-                    collision = False
-                    for j, other in enumerate(zombies[current_room]):
-                        if i != j and test_rect.colliderect(other):
-                            collision = True
-                            break
+        if wine_cellar_challenge_started:
+            fireball_timer, dodged_fireballs, dodge_goal_achieved, player_dead = fireball_challenge_logic(
+                current_room, player, fireballs, fireball_timer, dodged_fireballs, dodge_target, dodge_goal_achieved)
+            fireballs.draw(screen)
 
-                    if not collision:
-                        zombie.x += move_x
-                        zombie.y += move_y
+            if player_dead:
+                running = False
 
+            font = pygame.font.SysFont(None, 36)
+            target_text = font.render("Target: Dodge 100 fireballs", True, (0, 0, 0))
+            dodged_text = font.render("Dodged: " + str(min(dodged_fireballs, dodge_target)), True, (0, 128, 0))
+            screen.blit(target_text, (10, 40))
+            screen.blit(dodged_text, (10, 70))
 
-        # === Ghost Dodge Challenge: Basement Storage ===
-        if current_room == "Basement Storage":
-            if not hasattr(pygame, "_ghost_challenge_initialized"):
-                pygame._ghost_challenge_initialized = True
-                for i, (direction, rect, locked) in enumerate(doors["Basement Storage"]):
-                    doors["Basement Storage"][i] = (direction, rect, True)
-                    locked_doors[("Basement Storage", direction)] = True
-                ghosts["Basement Storage"] = [
-                    pygame.Rect(100, 300, 80, 80),
-                    pygame.Rect(600, 300, 80, 80),
-                    pygame.Rect(300, 150, 80, 80)
-                ]
-
-            if current_room in ghosts:
-                for i, ghost in enumerate(ghosts[current_room]):
-                    dx, dy = player.x - ghost.x, player.y - ghost.y
-                    dist = max((dx ** 2 + dy ** 2) ** 0.5, 1)
-                    speed = 3.2
-                    ghost.x += int(speed * dx / dist)
-                    ghost.y += int(speed * dy / dist)
-
-                    # Light collision with other ghosts (reduced radius)
-                    for j, other in enumerate(ghosts[current_room]):
-                        if i != j and ghost.colliderect(other.inflate(-40, -40)):
-                            ghost.x -= int(speed * dx / dist)
-                            ghost.y -= int(speed * dy / dist)
-
-
-    # Fireball Challenge: Wine Cellar
-            if wine_cellar_entry_time is None:
-                wine_cellar_entry_time = time.time()
-
-            # Start challenge if player enters center zone or 5s passes
-            if not wine_cellar_challenge_started:
-                if 250 < player.x < 500 or (time.time() - wine_cellar_entry_time) > 5:
-                    wine_cellar_challenge_started = True
-                    # Lock both doors for duration of challenge
-                    for i, (direction, rect, locked) in enumerate(doors["Wine Cellar"]):
-                        if direction in ["west", "east"]:
-                            doors["Wine Cellar"][i] = (direction, rect, True)
-                            locked_doors[("Wine Cellar", direction)] = True
-
-            if wine_cellar_challenge_started:
-                fireball_timer, dodged_fireballs, dodge_goal_achieved, player_dead = fireball_challenge_logic(
-                    current_room, player, fireballs, fireball_timer, dodged_fireballs, dodge_target, dodge_goal_achieved
-                )
-                fireballs.draw(screen)
-
-                if player_dead:
-                    running = False
-
-                font = pygame.font.SysFont(None, 36)
-                target_text = font.render("Target: Dodge 100 fireballs", True, (0, 0, 0))
-                dodged_text = font.render("Dodged: " + str(min(dodged_fireballs, dodge_target)), True, (0, 128, 0))
-                screen.blit(target_text, (10, 40))
-                screen.blit(dodged_text, (10, 70))
-
-                # Unlock doors after challenge completion
-                if dodge_goal_achieved:
-                    for i, (direction, rect, locked) in enumerate(doors["Wine Cellar"]):
-                        if direction in ["west", "east"]:
-                            doors["Wine Cellar"][i] = (direction, rect, False)
-                            locked_doors[("Wine Cellar", direction)] = False
+            # Unlock doors after challenge completion
+            if dodge_goal_achieved:
+                for i, (direction, rect, locked) in enumerate(doors["Kitchen"]):
+                    if direction in ["west", "east", "south"]:
+                        doors["Kitchen"][i] = (direction, rect, False)
+                        locked_doors[("Kitchen", direction)] = False
     
-        # Acid Rain Challenge: Garden Courtyard
+    # Acid Rain Challenge: Garden Courtyard
     if current_room == "Garden Courtyard":
         if acid_challenge_entry_time is None:
             acid_challenge_entry_time = time.time()
@@ -648,7 +627,7 @@ while running:
 
         if acid_challenge_started and not acid_challenge_completed:
             acid_timer += 1
-            if acid_timer > 10:
+            if acid_timer > 18:
                 y = random.randint(50, 550)
                 speed = random.choice([-10, -8, -7, -6, 6, 7, 8, 10])
                 x = 0 if speed > 0 else 800
@@ -690,6 +669,19 @@ while running:
             else:
                 hint_text = hint_font.render(" ", True, (0, 0, 0))
             screen.blit(hint_text, (200, 290))
+    
+    # === Survival HUDs ===
+    if current_room == "Servants Quarters" and zombie_challenge_started and not zombie_challenge_completed:
+        font = pygame.font.SysFont(None, 32)
+        time_elapsed = int(time.time() - zombie_challenge_start_time)
+        label = font.render(f"Survive: {time_elapsed}/{zombie_challenge_duration} seconds", True, (0, 0, 0))
+        screen.blit(label, (10, 70))
+
+    if current_room == "Basement Storage" and ghost_challenge_started and not ghost_challenge_completed:
+        font = pygame.font.SysFont(None, 32)
+        time_elapsed = int(time.time() - ghost_challenge_start_time)
+        label = font.render(f"Survive: {time_elapsed}/{ghost_challenge_duration} seconds", True, (0, 0, 0))
+        screen.blit(label, (10, 70))
 
     pygame.display.flip()
 
@@ -745,10 +737,23 @@ while running:
                     if (current_room, direction) == ("Gallery", "south"):
                         print("This door is locked from the other side.")
                         break
-                    # Prevent Wine Cellar doors from being opened during challenge
-                    if (current_room == "Wine Cellar" and direction in ["west", "east"] and not dodge_goal_achieved):
-                        print("This door is locked during the challenge.")
+                    # Prevent Kitchen doors from being opened during challenge
+                    if (current_room == "Kitchen" and direction in ["west", "east", "south"] and not dodge_goal_achieved):
+                        print("This door is locked during the fireball challenge.")
                         break
+                    # Prevent Garden Courtyard door opening during acid rain challenge
+                    if (current_room == "Garden Courtyard" and direction in ["west", "east"] and not acid_challenge_completed):
+                        print("This door is locked during the acid rain challenge.")
+                        break
+                    # Prevent Servants Quarters door opening during zombie challenge
+                    if (current_room == "Servants Quarters" and direction in ["north", "south", "east", "west"] and not zombie_challenge_completed):
+                        print("This door is locked during the zombie challenge.")
+                        break
+                    # Prevent Basement Storage door opening during ghost challenge
+                    if (current_room == "Basement Storage" and direction in ["north", "south", "east", "west"] and not ghost_challenge_completed):
+                        print("This door is locked during the ghost challenge.")
+                        break
+
                     elif "key" in inventory:
                         inventory.remove("key")
                         doors[current_room][i] = (direction, door_rect, False)
