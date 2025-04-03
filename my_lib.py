@@ -1,7 +1,11 @@
 import pygame
 
-# Doors setup
+# Global dictionary to store door positions and directions for each room
 doors = {}
+
+# === create_doors Function ===
+# This function creates rectangles that represent door hitboxes in each room,
+# based on the exits defined in the room_exits dictionary.
 def create_doors(room_exits):
     for room, exits in room_exits.items():
         doors[room] = []
