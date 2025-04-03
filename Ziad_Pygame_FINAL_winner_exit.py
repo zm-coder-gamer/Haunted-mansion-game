@@ -1,3 +1,7 @@
+# === Haunted Mansion: Main Game File ===
+# This file contains the full logic of the game including rendering,
+# player control, enemy behavior, inventory, item interaction, and challenges.
+
 import pygame
 import json
 import time
@@ -7,14 +11,18 @@ from player_sprite import PlayerSprite
 from fireball import Fireball
 
 # Initialize pygame
+# Initialize all imported Pygame modules
 pygame.init()
 
-# Screen dimensions
+# === Game Window Setup ===
+# Define the screen size and create a display surface
 SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Haunted Mansion")
 
 # === Fireball Challenge Logic ===
+# This function handles the falling fireball challenge.
+# The player must dodge fireballs in the Kitchen for a set amount of time.
 def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, dodged_fireballs,
                              dodge_target, dodge_goal_achieved):
     if current_room != "Kitchen":
@@ -62,6 +70,8 @@ wine_cellar_challenge_started = False
 wine_cellar_entry_time = None
 
 # === AcidDrop Class ===
+# This class defines a green droplet that moves horizontally across the screen
+# during the acid rain challenge in the Garden Courtyard.
 class AcidDrop(pygame.sprite.Sprite):
     def __init__(self, x, y, speed):
         super().__init__()
@@ -82,7 +92,7 @@ acid_challenge_started = False
 acid_challenge_completed = False
 acid_challenge_entry_time = None
 
-current_room = "Exit Gate" # Player Enters the Mansion
+current_room = "Grand Entrance" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
@@ -163,7 +173,7 @@ base_player_speed = 4
 player_speed = base_player_speed
 speed_boost_active = False
 speed_boost_end_time = 0
-health = 1000
+health = 10
 
 # Helper to get adjusted speed per room
 def get_enemy_speed(entity_type, room):
