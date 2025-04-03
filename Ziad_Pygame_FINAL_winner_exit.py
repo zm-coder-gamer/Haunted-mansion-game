@@ -4,7 +4,6 @@ import time
 import random
 from my_lib import create_doors
 from player_sprite import PlayerSprite
-from challenges import fireball_challenge_logic
 from fireball import Fireball
 
 # Initialize pygame
@@ -16,6 +15,41 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Haunted Mansion")
 
 # === Fireball Challenge Logic ===
+def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, dodged_fireballs,
+                             dodge_target, dodge_goal_achieved):
+    if current_room != "Kitchen":
+        return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
+
+    fireball_timer += 1
+    if not dodge_goal_achieved and fireball_timer > 10:
+        x = random.randint(70, 740)
+        speed = random.choice([6, 7, 8, 10])
+        fireball = Fireball(x, speed)
+        fireballs.add(fireball)
+        fireball_timer = 0
+
+    for fireball in fireballs.sprites():
+        if not dodge_goal_achieved:
+            fireball.update()
+        if fireball.rect.top > SCREEN_HEIGHT:
+            fireball.kill()
+            if not dodge_goal_achieved:
+                dodged_fireballs += 1
+                if dodged_fireballs >= dodge_target:
+                    dodge_goal_achieved = True
+                    fireballs.empty()
+
+    if not dodge_goal_achieved:
+        hits = pygame.sprite.spritecollide(player_sprite, fireballs, True)
+        if hits:
+            global health
+            health -= 1
+            if health <= 0:
+                print("You Died!")
+                fireballs.empty()
+                return fireball_timer, dodged_fireballs, dodge_goal_achieved, True
+
+    return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
 
 # Fireball Challenge State
 fireballs = pygame.sprite.Group()
@@ -48,7 +82,7 @@ acid_challenge_started = False
 acid_challenge_completed = False
 acid_challenge_entry_time = None
 
-current_room = "Grand Entrance" # Player Enters the Mansion
+current_room = "Exit Gate" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
@@ -325,11 +359,9 @@ while running:
                 elif inventory[i] == "speed_potion":
                     screen.blit(speed_potion_img, slot_rect.topleft)
 
-
         pygame.draw.ellipse(screen, (255, 0, 0), inventory_cursor)
         # === Display Instructions ===
         instruction_font = pygame.font.SysFont(None, 24)
-
         instructions = [
             "Controls:",
             "- Move: W A S D",
