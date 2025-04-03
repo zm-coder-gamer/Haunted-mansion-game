@@ -5,7 +5,6 @@ import random
 from my_lib import create_doors
 from player_sprite import PlayerSprite
 from challenges import fireball_challenge_logic
-from fireball import Fireball
 
 # Initialize pygame
 pygame.init()
@@ -82,33 +81,21 @@ key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (50, 50))
 
 # Load player images
-player_images = {
-    "front": [
-        pygame.image.load("images/player_front.png"),
-        pygame.image.load("images/front_walk1.png"),
-        pygame.image.load("images/front_walk2.png")
-    ],
-    "back": [
-        pygame.image.load("images/player_back.png"),
-        pygame.image.load("images/back_walk1.png"),
-        pygame.image.load("images/back_walk2.png")
-    ],
-    "left": [
-        pygame.image.load("images/player_left.png"),
-        pygame.image.load("images/left_walk1.png"),
-        pygame.image.load("images/left_walk2.png")
-    ],
-    "right": [
-        pygame.image.load("images/player_right.png"),
-        pygame.image.load("images/right_walk1.png"),
-        pygame.image.load("images/right_walk2.png")
-    ]
-}
+import json
 
-# Scale all player images
-for direction in player_images:
-    for i in range(len(player_images[direction])):
-        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))
+# Load the JSON file into a dictionary
+with open("player_images_data.json", "r") as file:
+    player_image_paths = json.load(file)
+
+player_images = {}
+# Load and scale all player images using a double loop
+for direction, path_list in player_image_paths.items():
+    images = []
+    for path in path_list:
+        image = pygame.image.load(path)
+        scaled_image = pygame.transform.scale(image, (70, 70))
+        images.append(scaled_image)
+    player_images[direction] = images
 
 # Animation state
 player_facing = "front"

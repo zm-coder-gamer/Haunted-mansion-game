@@ -1,0 +1,22 @@
+{
+    "front": [
+        "images/player_front.png",
+        "images/front_walk1.png",
+        "images/front_walk2.png"
+    ],
+    "back": [
+        "images/player_back.png",
+        "images/back_walk1.png",
+        "images/back_walk2.png"
+    ],
+    "left": [
+        "images/player_left.png",
+        "images/left_walk1.png",
+        "images/left_walk2.png"
+    ],
+    "right": [
+        "images/player_right.png",
+        "images/right_walk1.png",
+        "images/right_walk2.png"
+    ]
+}
