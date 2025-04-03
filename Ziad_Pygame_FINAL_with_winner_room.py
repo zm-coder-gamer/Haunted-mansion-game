@@ -77,7 +77,7 @@ class AcidDrop(pygame.sprite.Sprite):
 acid_drops = pygame.sprite.Group()
 acid_timer = 0
 acid_dodged = 0
-acid_dodge_target = 200
+acid_dodge_target = 100
 acid_challenge_started = False
 acid_challenge_completed = False
 acid_challenge_entry_time = None
@@ -92,12 +92,18 @@ inventory_cooldown = 300  # milliseconds
 with open("rooms_data.json", "r") as file:
     room_exits = json.load(file)
 
+# Add Winner Room manually to room_exits
+room_exits["Exit Gate"]["east"] = "Winner Room"
+room_exits["Winner Room"] = {"west": "Exit Gate"}
+
+
 # Load room images
 all_rooms = room_exits.keys()
 rooms = {}
 for room in all_rooms:
     rooms[room] = pygame.transform.scale(pygame.image.load("images/"+room+".png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
 
+rooms["Winner Room"] = pygame.transform.scale(pygame.image.load("images/Winner Room.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
 doors = create_doors(room_exits)
 
 # Room boundaries
@@ -153,7 +159,10 @@ player_anim_delay = 200  # milliseconds
 # Player setup
 player = pygame.Rect(80, 275, 70, 70)
 player_sprite = PlayerSprite(player)
-player_speed = 4
+base_player_speed = 4
+player_speed = base_player_speed
+speed_boost_active = False
+speed_boost_end_time = 0
 health = 1000
 
 # Helper to get adjusted speed per room
@@ -185,7 +194,7 @@ for direction in zombie_images:
         zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
 
 # zombie setup
-zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Wine Cellar", "Gallery"]
+zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Wine Cellar", "Gallery", "Library"]
 zombies = {}
 
 for room in zombie_rooms:
@@ -225,7 +234,11 @@ ghost_anim_timer = 0
 ghost_anim_delay = 200
 
 ghosts = {
-    "Ballroom": [pygame.Rect(300, 300, 80, 80)]
+    "Ballroom": [pygame.Rect(420, 300, 80, 80)],
+    "Wine Cellar": [pygame.Rect(420, 300, 80, 80)],
+    "Bathroom": [pygame.Rect(420, 300, 80, 80)],
+    "Dining Room": [pygame.Rect(420, 300, 80, 80)],
+    "Study": [pygame.Rect(420, 300, 80, 80)]
 }
 
 # Inventory setup
@@ -237,6 +250,8 @@ cursor_speed = 5
 # Load item images
 health_potion_img = pygame.image.load("images/health_potion.png")
 health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
+speed_potion_img = pygame.image.load("images/speed_potion.png")
+speed_potion_img = pygame.transform.scale(speed_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (40, 40))
 
@@ -250,14 +265,20 @@ cursor_speed = 5
 items_in_rooms = {
     "Grand Entrance": [(pygame.Rect(100, 100, 30, 30), "health_potion")],
     "Master Bedroom": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
+    "Wine Cellar": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
     "Guest Bedroom": [(pygame.Rect(120, 120, 30, 30), "key")],
-    "Torture Chamber": [(pygame.Rect(450, 450, 30, 30), "key")]
+    "Torture Chamber": [(pygame.Rect(450, 450, 30, 30), "key")],
+    "Attic": [(pygame.Rect(300, 200, 30, 30), "speed_potion")],
+    "Pantry": [(pygame.Rect(450, 350, 30, 30), "speed_potion")]
+
 }
 
 # Locked doors setup
 locked_doors = {
-    ("Ballroom", "south"): True,  # The south door in Ballroom is locked
-    ("Gallery", "south"): True    # Locked from outside until accessed from Secret Passage
+    ("Ballroom", "south"): True, # The south door in Ballroom is locked
+    ("Gallery", "south"): True, # Locked from outside until accessed from Secret Passage
+    #Both locked to store secret speed potion inside
+    ("Bathroom", "north"): True
 }
 
 # Doors setup with lock state
@@ -290,6 +311,7 @@ def pressed_I(keys):
         I_tracker += 1
 
 inventory_key_pressed = False
+e_key_was_pressed = False  # Used to debounce the E key
 show_inventory_hint = True
 game_start_time = time.time()
 
@@ -299,6 +321,18 @@ clock = pygame.time.Clock()
 while running:
     current_time = pygame.time.get_ticks()
 
+    
+    if current_room == "Winner Room":
+        screen.blit(rooms[current_room], (0, 0))
+        font = pygame.font.SysFont(None, 72)
+        label = font.render("You Escaped The", True, (255, 255, 255))
+        screen.blit(label, (200, 180))
+        label = font.render("Haunted Mansion!", True, (255, 255, 255))
+        screen.blit(label, (200, 380))
+        pygame.display.flip()
+        time.sleep(5)
+        running = False
+        continue
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -322,6 +356,9 @@ while running:
                     screen.blit(health_potion_img, slot_rect.topleft)
                 elif inventory[i] == "key":
                     screen.blit(key_img, slot_rect.topleft)
+                elif inventory[i] == "speed_potion":
+                    screen.blit(speed_potion_img, slot_rect.topleft)
+
 
         pygame.draw.ellipse(screen, (255, 0, 0), inventory_cursor)
         # === Display Instructions ===
@@ -365,7 +402,8 @@ while running:
         if keys[pygame.K_s]:
             inventory_cursor.y += cursor_speed
 
-        if keys[pygame.K_e]:
+        if keys[pygame.K_e] and not e_key_was_pressed:
+            e_key_was_pressed = True
             for i, rect in enumerate(slot_rects[:len(inventory)]):
                 if inventory_cursor.colliderect(rect):
                     if inventory[i] == "health_potion":
@@ -373,6 +411,16 @@ while running:
                         print("Used health potion")
                         inventory.pop(i)
                         break
+                    elif inventory[i] == "speed_potion":
+                        player_speed = 7  # boosted speed
+                        speed_boost_active = True
+                        speed_boost_end_time = time.time() + 20  # lasts 20 seconds
+                        print("Used speed potion!")
+                        inventory.pop(i)
+
+        else:
+            if not keys[pygame.K_e]:
+                e_key_was_pressed = False
 
     else:
         # Draw player image based on direction and animation
@@ -402,6 +450,9 @@ while running:
                     screen.blit(health_potion_img, item_rect.topleft)
                 elif item_type == "key":
                     screen.blit(key_img, item_rect.topleft)
+                elif item_type == "speed_potion":
+                    screen.blit(speed_potion_img, item_rect.topleft)
+
 
                 if player.colliderect(item_rect) and len(inventory) < max_inventory_slots:
                     inventory.append(item_type)
@@ -670,7 +721,7 @@ while running:
                 hint_text = hint_font.render(" ", True, (0, 0, 0))
             screen.blit(hint_text, (200, 290))
     
-    # === Survival HUDs ===
+    # === Challenge Timer ===
     if current_room == "Servants Quarters" and zombie_challenge_started and not zombie_challenge_completed:
         font = pygame.font.SysFont(None, 32)
         time_elapsed = int(time.time() - zombie_challenge_start_time)
@@ -682,6 +733,11 @@ while running:
         time_elapsed = int(time.time() - ghost_challenge_start_time)
         label = font.render(f"Survive: {time_elapsed}/{ghost_challenge_duration} seconds", True, (0, 0, 0))
         screen.blit(label, (10, 70))
+    
+    if speed_boost_active and time.time() > speed_boost_end_time:
+        player_speed = base_player_speed
+        speed_boost_active = False
+        print("Speed boost ended.")
 
     pygame.display.flip()
 
