@@ -101,12 +101,14 @@ with open("player_images.json", "r") as file:
 player_images = {}
 
 for direction, filenames in image_data.items():
-    player_images[direction] = [pygame.image.load(f"images/{name}") for name in filenames]
+    player_images[direction] = [pygame.transform.scale(pygame.image.load(f"images/{name}"), (70, 70)) for name in filenames]
+    
+
 
 # Scale all player images
-for direction in player_images:
+"""for direction in player_images:
     for i in range(len(player_images[direction])):
-        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))
+        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))"""
 
 # Animation state
 player_facing = "front"
@@ -130,7 +132,6 @@ def get_enemy_speed(entity_type, room):
     elif entity_type == "ghost":
         return 2.02 if room == "Basement Storage" else 3.3
     return 3
-
 
 # Load zombie images
 zombie_images = {
@@ -228,7 +229,6 @@ items_in_rooms = {
     "Torture Chamber": [(pygame.Rect(450, 450, 30, 30), "key")],
     "Attic": [(pygame.Rect(300, 200, 30, 30), "speed_potion")],
     "Pantry": [(pygame.Rect(450, 350, 30, 30), "speed_potion")]
-
 }
 
 # Locked doors setup
@@ -246,7 +246,6 @@ for room, door_list in doors.items():
             door_list[i] = (direction, rect, True)  # locked
         else:
             door_list[i] = (direction, rect, False)  # unlocked
-
 
 # === Challenge Room Survival Timers ===
 zombie_challenge_started = False
@@ -278,8 +277,6 @@ clock = pygame.time.Clock()
 # Main game loop
 while running:
     current_time = pygame.time.get_ticks()
-
-    
     if current_room == "Winner Room":
         screen.blit(rooms[current_room], (0, 0))
         font = pygame.font.SysFont(None, 72)
@@ -346,7 +343,6 @@ while running:
             screen.blit(text_surface, (30, text_y))
             text_y += 25  # Line spacing
 
-
         keys = pygame.key.get_pressed()
         pressed_I(keys)
         if keys[pygame.K_a]:
@@ -408,7 +404,6 @@ while running:
                     screen.blit(key_img, item_rect.topleft)
                 elif item_type == "speed_potion":
                     screen.blit(speed_potion_img, item_rect.topleft)
-
 
                 if player.colliderect(item_rect) and len(inventory) < max_inventory_slots:
                     inventory.append(item_type)
@@ -500,7 +495,6 @@ while running:
                     items_in_rooms.setdefault("Servants Quarters", []).append(
                         (pygame.Rect(380, 280, 30, 30), "health_potion")
 )
-
 
             if not hasattr(pygame, "_zombie_challenge_initialized"):
                 pygame._zombie_challenge_initialized = True
