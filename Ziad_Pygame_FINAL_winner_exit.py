@@ -8,9 +8,9 @@ import time
 import random
 from my_lib import create_doors
 from player_sprite import PlayerSprite
-#from fireball import Fireball
 from challenges import fireball_challenge_logic
 from acid_drop import AcidDrop
+from utility_lib import load_and_scale_character_images
 
 # Initialize pygame
 # Initialize all imported Pygame modules
@@ -81,14 +81,7 @@ key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (50, 50))
 
 # Load JSON data for player images
-with open("player_images.json", "r") as file:
-    image_data = json.load(file)
-
-player_images = {}
-
-# Scales player images and and loads them into player_images
-for direction, filenames in image_data.items():
-    player_images[direction] = [pygame.transform.scale(pygame.image.load(f"images/{name}"), (70, 70)) for name in filenames]
+player_images = load_and_scale_character_images("player_images.json", 70)
 
 # Animation state
 player_facing = "front"
@@ -113,33 +106,15 @@ def get_enemy_speed(entity_type, room):
         return 2.02 if room == "Basement Storage" else 3.3
     return 3
 
-# Load zombie images
-zombie_images = {
-    "left": [
-        pygame.image.load("images/zombie_left.png"),
-        pygame.image.load("images/zleft_run1.png"),
-        pygame.image.load("images/zleft_run2.png")
-    ],
-    "right": [
-        pygame.image.load("images/zombie_right.png"),
-        pygame.image.load("images/zright_run1.png"),
-        pygame.image.load("images/zright_run2.png")
-    ]
-}
-
-# Scale all zombie images
-for direction in zombie_images:
-    for i in range(len(zombie_images[direction])):
-        zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
+# Load and scale zombie images
+zombie_images = load_and_scale_character_images("zombie_images.json", 100)
 
 # zombie setup
 zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Wine Cellar", "Gallery", "Library"]
 zombies = {}
 
 for room in zombie_rooms:
-    zombies[room] = [
-        pygame.Rect(420, 290, 85, 85)
-    ]
+    zombies[room] = [pygame.Rect(420, 290, 85, 85)]
 
 # Zombie animation state
 zombie_frame = 0
@@ -150,24 +125,7 @@ room_entry_time = time.time()
 knockback_force = 50
 
 # Load ghost images (hovering cycle)
-ghost_images = {
-    "left": [
-        pygame.image.load("images/ghost1_left.png"),
-        pygame.image.load("images/ghost2_left.png"),
-        pygame.image.load("images/ghost3_left.png")
-    ],
-    "right": [
-        pygame.image.load("images/ghost1_right.png"),
-        pygame.image.load("images/ghost2_right.png"),
-        pygame.image.load("images/ghost3_right.png")
-    ]
-}
-
-# Scale all ghost images
-for direction in ghost_images:
-    for i in range(len(ghost_images[direction])):
-        ghost_images[direction][i] = pygame.transform.scale(ghost_images[direction][i], (100, 100))
-
+ghost_images = load_and_scale_character_images("ghost_images.json", 100)
 ghost_frame = 0
 ghost_anim_timer = 0
 ghost_anim_delay = 200
