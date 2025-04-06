@@ -32,20 +32,6 @@ dodge_goal_achieved = False
 wine_cellar_challenge_started = False
 wine_cellar_entry_time = None
 
-# === AcidDrop Class ===
-# This class defines a green droplet that moves horizontally across the screen
-# during the acid rain challenge in the Garden Courtyard.
-class AcidDrop(pygame.sprite.Sprite):
-    def __init__(self, x, y, speed):
-        super().__init__()
-        self.image = pygame.Surface((10, 10))
-        self.image.fill((0, 255, 0))  # Green acid drop
-        self.rect = self.image.get_rect(center=(x, y))
-        self.speed = speed
-
-    def update(self):
-        self.rect.x += self.speed
-
 # === Acid Rain Challenge State ===
 acid_drops = pygame.sprite.Group()
 acid_timer = 0
@@ -55,7 +41,7 @@ acid_challenge_started = False
 acid_challenge_completed = False
 acid_challenge_entry_time = None
 
-current_room = "Grand Entrance" # Player Enters the Mansion
+current_room = "Torture Chamber" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
