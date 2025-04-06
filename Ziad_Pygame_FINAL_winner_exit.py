@@ -10,6 +10,7 @@ from my_lib import create_doors
 from player_sprite import PlayerSprite
 #from fireball import Fireball
 from challenges import fireball_challenge_logic
+from acid_drop import AcidDrop
 
 # Initialize pygame
 # Initialize all imported Pygame modules
@@ -93,22 +94,15 @@ health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (50, 50))
 
-# Load JSON data
+# Load JSON data for player images
 with open("player_images.json", "r") as file:
     image_data = json.load(file)
 
-# Convert JSON data into loaded images
 player_images = {}
 
+# Scales player images and and loads them into player_images
 for direction, filenames in image_data.items():
     player_images[direction] = [pygame.transform.scale(pygame.image.load(f"images/{name}"), (70, 70)) for name in filenames]
-    
-
-
-# Scale all player images
-"""for direction in player_images:
-    for i in range(len(player_images[direction])):
-        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))"""
 
 # Animation state
 player_facing = "front"
