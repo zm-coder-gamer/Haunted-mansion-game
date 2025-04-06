@@ -93,29 +93,15 @@ health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (50, 50))
 
-# Load player images
-player_images = {
-    "front": [
-        pygame.image.load("images/player_front.png"),
-        pygame.image.load("images/front_walk1.png"),
-        pygame.image.load("images/front_walk2.png")
-    ],
-    "back": [
-        pygame.image.load("images/player_back.png"),
-        pygame.image.load("images/back_walk1.png"),
-        pygame.image.load("images/back_walk2.png")
-    ],
-    "left": [
-        pygame.image.load("images/player_left.png"),
-        pygame.image.load("images/left_walk1.png"),
-        pygame.image.load("images/left_walk2.png")
-    ],
-    "right": [
-        pygame.image.load("images/player_right.png"),
-        pygame.image.load("images/right_walk1.png"),
-        pygame.image.load("images/right_walk2.png")
-    ]
-}
+# Load JSON data
+with open("player_images.json", "r") as file:
+    image_data = json.load(file)
+
+# Convert JSON data into loaded images
+player_images = {}
+
+for direction, filenames in image_data.items():
+    player_images[direction] = [pygame.image.load(f"images/{name}") for name in filenames]
 
 # Scale all player images
 for direction in player_images:
