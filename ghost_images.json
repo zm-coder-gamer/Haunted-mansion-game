@@ -1,0 +1,12 @@
+{
+    "left": [
+        "ghost1_left.png",
+        "ghost2_left.png",
+        "ghost3_left.png"
+    ],
+    "right": [
+        "ghost1_right.png",
+        "ghost2_right.png",
+        "ghost3_right.png"
+    ]
+}

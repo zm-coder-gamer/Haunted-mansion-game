@@ -1,0 +1,79 @@
+{
+    "screen": {
+        "width": 800,
+        "height": 600,
+        "wall_thickness": 30
+    },
+    "player": {
+        "width": 70,
+        "height": 70,
+        "start_x": 80,
+        "start_y": 275,
+        "base_speed": 4,
+        "speed_boost": 7,
+        "speed_boost_duration": 20,
+        "max_health": 10,
+        "knockback_force": 50,
+        "anim_delay": 200
+    },
+    "inventory": {
+        "max_slots": 20,
+        "cursor_speed": 5,
+        "cooldown": 300
+    },
+    "zombie": {
+        "anim_delay": 300,
+        "challenge_duration": 20,
+        "challenge_rooms": [
+            "Main Hallway",
+            "Torture Chamber",
+            "Servants Quarters",
+            "Wine Cellar",
+            "Gallery",
+            "Library"
+        ]
+    },
+    "ghost": {
+        "anim_delay": 200,
+        "challenge_duration": 20,
+        "challenge_rooms": [
+            "Ballroom",
+            "Wine Cellar",
+            "Bathroom",
+            "Dining Room",
+            "Study"
+        ]
+    },
+    "fireball_challenge": {
+        "room": "Kitchen",
+        "dodge_target": 100,
+        "fireball_challenge_state": {
+            "fireball_timer" : 0,
+            "dodged_fireballs" : 0,
+            "dodge_target" : 100,
+            "dodge_goal_achieved" : false,
+            "wine_cellar_challenge_started" : false,
+            "wine_cellar_entry_time" : null
+        }
+    },
+    "acid_challenge": {
+        "room": "Garden Courtyard",
+        "dodge_target": 100,
+        "acid_challenge_state": {
+            "acid_timer" : 0,
+            "acid_dodged" : 0,
+            "acid_dodge_target" : 100,
+            "acid_challenge_started" : false,
+            "acid_challenge_completed" : false,
+            "acid_challenge_entry_time" : null
+        }
+    },
+    "player_setup":{
+        "player" : {"pygame_rect":[80, 275, 70, 70]},
+        "base_player_speed" : 10,
+        "speed_boost_active" : false,
+        "speed_boost_end_time" : 0,
+        "health" : 10000
+    }
+
+}

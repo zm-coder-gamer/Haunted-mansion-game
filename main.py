@@ -8,89 +8,85 @@ import time
 import random
 from my_lib import create_doors
 from player_sprite import PlayerSprite
-from fireball import Fireball
+from challenges import fireball_challenge_logic
+from acid_drop import AcidDrop
+from utility_lib import load_and_scale_character_images, load_items_in_rooms
 
 # Initialize pygame
 # Initialize all imported Pygame modules
+
+# === Load Game Configuration ===
+with open("config.json", "r") as config_file:
+    game_config = json.load(config_file)
+
+SCREEN_WIDTH = game_config["screen"]["width"]
+SCREEN_HEIGHT = game_config["screen"]["height"]
+wall_thickness = game_config["screen"]["wall_thickness"]
+
+player_width = game_config["player"]["width"]
+player_height = game_config["player"]["height"]
+player = pygame.Rect(game_config["player"]["start_x"], game_config["player"]["start_y"], player_width, player_height)
+
+base_player_speed = game_config["player"]["base_speed"]
+player_speed = base_player_speed
+speed_boost_active = False
+speed_boost_end_time = 0
+knockback_force = game_config["player"]["knockback_force"]
+health = game_config["player"]["max_health"]
+player_anim_delay = game_config["player"]["anim_delay"]
+
+max_inventory_slots = game_config["inventory"]["max_slots"]
+cursor_speed = game_config["inventory"]["cursor_speed"]
+inventory_cooldown = game_config["inventory"]["cooldown"]
+
+zombie_anim_delay = game_config["zombie"]["anim_delay"]
+zombie_challenge_duration = game_config["zombie"]["challenge_duration"]
+
+ghost_anim_delay = game_config["ghost"]["anim_delay"]
+ghost_challenge_duration = game_config["ghost"]["challenge_duration"]
+
+dodge_target = game_config["fireball_challenge"]["dodge_target"]
+acid_dodge_target = game_config["acid_challenge"]["dodge_target"]
+
+# === End of Game Config === #
+
 pygame.init()
 
 # === Game Window Setup ===
 # Define the screen size and create a display surface
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Haunted Mansion")
 
-# === Fireball Challenge Logic ===
-# This function handles the falling fireball challenge.
-# The player must dodge fireballs in the Kitchen for a set amount of time.
-def fireball_challenge_logic(current_room, player, fireballs, fireball_timer, dodged_fireballs,
-                             dodge_target, dodge_goal_achieved):
-    if current_room != "Kitchen":
-        return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
-
-    fireball_timer += 1
-    if not dodge_goal_achieved and fireball_timer > 10:
-        x = random.randint(70, 740)
-        speed = random.choice([6, 7, 8, 10])
-        fireball = Fireball(x, speed)
-        fireballs.add(fireball)
-        fireball_timer = 0
-
-    for fireball in fireballs.sprites():
-        if not dodge_goal_achieved:
-            fireball.update()
-        if fireball.rect.top > SCREEN_HEIGHT:
-            fireball.kill()
-            if not dodge_goal_achieved:
-                dodged_fireballs += 1
-                if dodged_fireballs >= dodge_target:
-                    dodge_goal_achieved = True
-                    fireballs.empty()
-
-    if not dodge_goal_achieved:
-        hits = pygame.sprite.spritecollide(player_sprite, fireballs, True)
-        if hits:
-            global health
-            health -= 1
-            if health <= 0:
-                print("You Died!")
-                fireballs.empty()
-                return fireball_timer, dodged_fireballs, dodge_goal_achieved, True
-
-    return fireball_timer, dodged_fireballs, dodge_goal_achieved, False
+# Read the game config
+with open("config.json", "r") as config_file:
+    config = json.load(config_file)
 
 # Fireball Challenge State
 fireballs = pygame.sprite.Group()
-fireball_timer = 0
-dodged_fireballs = 0
-dodge_target = 100
-dodge_goal_achieved = False
-# Fireball Challenge Tracking for Wine Cellar
-wine_cellar_challenge_started = False
-wine_cellar_entry_time = None
 
-# === AcidDrop Class ===
-# This class defines a green droplet that moves horizontally across the screen
-# during the acid rain challenge in the Garden Courtyard.
-class AcidDrop(pygame.sprite.Sprite):
-    def __init__(self, x, y, speed):
-        super().__init__()
-        self.image = pygame.Surface((10, 10))
-        self.image.fill((0, 255, 0))  # Green acid drop
-        self.rect = self.image.get_rect(center=(x, y))
-        self.speed = speed
+# Extract fireball challenge state values from config
+fireball_config = config["fireball_challenge"]["fireball_challenge_state"]
 
-    def update(self):
-        self.rect.x += self.speed
+fireball_timer = fireball_config["fireball_timer"]
+dodged_fireballs = fireball_config["dodged_fireballs"]
+dodge_target = fireball_config["dodge_target"]
+dodge_goal_achieved = fireball_config["dodge_goal_achieved"]
+wine_cellar_challenge_started = fireball_config["wine_cellar_challenge_started"]
+wine_cellar_entry_time = fireball_config["wine_cellar_entry_time"]
 
 # === Acid Rain Challenge State ===
+
+# Extract acid rain challenge state values from config
+acid_rain_config = config["acid_challenge"]["acid_challenge_state"]
 acid_drops = pygame.sprite.Group()
-acid_timer = 0
-acid_dodged = 0
-acid_dodge_target = 100
-acid_challenge_started = False
-acid_challenge_completed = False
-acid_challenge_entry_time = None
+
+acid_timer = acid_rain_config["acid_timer"]
+acid_dodged = acid_rain_config["acid_dodged"]
+acid_dodge_target = acid_rain_config["acid_dodge_target"]
+acid_challenge_started = acid_rain_config["acid_challenge_started"]
+acid_challenge_completed = acid_rain_config["acid_challenge_completed"]
+acid_challenge_entry_time = acid_rain_config["acid_challenge_entry_time"]
 
 current_room = "Grand Entrance" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
@@ -105,7 +101,6 @@ with open("rooms_data.json", "r") as file:
 # Add Winner Room manually to room_exits
 room_exits["Exit Gate"]["east"] = "Winner Room"
 room_exits["Winner Room"] = {"west": "Exit Gate"}
-
 
 # Load room images
 all_rooms = room_exits.keys()
@@ -131,34 +126,8 @@ health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
 key_img = pygame.image.load("images/key.png")
 key_img = pygame.transform.scale(key_img, (50, 50))
 
-# Load player images
-player_images = {
-    "front": [
-        pygame.image.load("images/player_front.png"),
-        pygame.image.load("images/front_walk1.png"),
-        pygame.image.load("images/front_walk2.png")
-    ],
-    "back": [
-        pygame.image.load("images/player_back.png"),
-        pygame.image.load("images/back_walk1.png"),
-        pygame.image.load("images/back_walk2.png")
-    ],
-    "left": [
-        pygame.image.load("images/player_left.png"),
-        pygame.image.load("images/left_walk1.png"),
-        pygame.image.load("images/left_walk2.png")
-    ],
-    "right": [
-        pygame.image.load("images/player_right.png"),
-        pygame.image.load("images/right_walk1.png"),
-        pygame.image.load("images/right_walk2.png")
-    ]
-}
-
-# Scale all player images
-for direction in player_images:
-    for i in range(len(player_images[direction])):
-        player_images[direction][i] = pygame.transform.scale(player_images[direction][i], (70, 70))
+# Load JSON data for player images
+player_images = load_and_scale_character_images("player_images.json", 70)
 
 # Animation state
 player_facing = "front"
@@ -169,11 +138,11 @@ player_anim_delay = 200  # milliseconds
 # Player setup
 player = pygame.Rect(80, 275, 70, 70)
 player_sprite = PlayerSprite(player)
-base_player_speed = 4
+base_player_speed = 10
 player_speed = base_player_speed
 speed_boost_active = False
 speed_boost_end_time = 0
-health = 10
+health = 10000
 
 # Helper to get adjusted speed per room
 def get_enemy_speed(entity_type, room):
@@ -183,34 +152,15 @@ def get_enemy_speed(entity_type, room):
         return 2.02 if room == "Basement Storage" else 3.3
     return 3
 
-
-# Load zombie images
-zombie_images = {
-    "left": [
-        pygame.image.load("images/zombie_left.png"),
-        pygame.image.load("images/zleft_run1.png"),
-        pygame.image.load("images/zleft_run2.png")
-    ],
-    "right": [
-        pygame.image.load("images/zombie_right.png"),
-        pygame.image.load("images/zright_run1.png"),
-        pygame.image.load("images/zright_run2.png")
-    ]
-}
-
-# Scale all zombie images
-for direction in zombie_images:
-    for i in range(len(zombie_images[direction])):
-        zombie_images[direction][i] = pygame.transform.scale(zombie_images[direction][i], (100, 100))
+# Load and scale zombie images
+zombie_images = load_and_scale_character_images("zombie_images.json", 100)
 
 # zombie setup
 zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Wine Cellar", "Gallery", "Library"]
 zombies = {}
 
 for room in zombie_rooms:
-    zombies[room] = [
-        pygame.Rect(420, 290, 85, 85)
-    ]
+    zombies[room] = [pygame.Rect(420, 290, 85, 85)]
 
 # Zombie animation state
 zombie_frame = 0
@@ -221,24 +171,7 @@ room_entry_time = time.time()
 knockback_force = 50
 
 # Load ghost images (hovering cycle)
-ghost_images = {
-    "left": [
-        pygame.image.load("images/ghost1_left.png"),
-        pygame.image.load("images/ghost2_left.png"),
-        pygame.image.load("images/ghost3_left.png")
-    ],
-    "right": [
-        pygame.image.load("images/ghost1_right.png"),
-        pygame.image.load("images/ghost2_right.png"),
-        pygame.image.load("images/ghost3_right.png")
-    ]
-}
-
-# Scale all ghost images
-for direction in ghost_images:
-    for i in range(len(ghost_images[direction])):
-        ghost_images[direction][i] = pygame.transform.scale(ghost_images[direction][i], (100, 100))
-
+ghost_images = load_and_scale_character_images("ghost_images.json", 100)
 ghost_frame = 0
 ghost_anim_timer = 0
 ghost_anim_delay = 200
@@ -272,16 +205,12 @@ inventory_cursor = pygame.Rect(10, 10, 40, 40)
 cursor_speed = 5
 
 # Items in rooms
-items_in_rooms = {
-    "Grand Entrance": [(pygame.Rect(100, 100, 30, 30), "health_potion")],
-    "Master Bedroom": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
-    "Wine Cellar": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
-    "Guest Bedroom": [(pygame.Rect(120, 120, 30, 30), "key")],
-    "Torture Chamber": [(pygame.Rect(450, 450, 30, 30), "key")],
-    "Attic": [(pygame.Rect(300, 200, 30, 30), "speed_potion")],
-    "Pantry": [(pygame.Rect(450, 350, 30, 30), "speed_potion")]
+with open("items_in_rooms.json", "r") as file:
+    data = json.load(file)
 
-}
+
+
+items_in_rooms = load_items_in_rooms(data)
 
 # Locked doors setup
 locked_doors = {
@@ -298,7 +227,6 @@ for room, door_list in doors.items():
             door_list[i] = (direction, rect, True)  # locked
         else:
             door_list[i] = (direction, rect, False)  # unlocked
-
 
 # === Challenge Room Survival Timers ===
 zombie_challenge_started = False
@@ -324,14 +252,11 @@ inventory_key_pressed = False
 e_key_was_pressed = False  # Used to debounce the E key
 show_inventory_hint = True
 game_start_time = time.time()
-
 clock = pygame.time.Clock()
 
 # Main game loop
 while running:
     current_time = pygame.time.get_ticks()
-
-    
     if current_room == "Winner Room":
         screen.blit(rooms[current_room], (0, 0))
         font = pygame.font.SysFont(None, 72)
@@ -398,7 +323,6 @@ while running:
             screen.blit(text_surface, (30, text_y))
             text_y += 25  # Line spacing
 
-
         keys = pygame.key.get_pressed()
         pressed_I(keys)
         if keys[pygame.K_a]:
@@ -460,7 +384,6 @@ while running:
                     screen.blit(key_img, item_rect.topleft)
                 elif item_type == "speed_potion":
                     screen.blit(speed_potion_img, item_rect.topleft)
-
 
                 if player.colliderect(item_rect) and len(inventory) < max_inventory_slots:
                     inventory.append(item_type)
@@ -552,7 +475,6 @@ while running:
                     items_in_rooms.setdefault("Servants Quarters", []).append(
                         (pygame.Rect(380, 280, 30, 30), "health_potion")
 )
-
 
             if not hasattr(pygame, "_zombie_challenge_initialized"):
                 pygame._zombie_challenge_initialized = True
@@ -650,8 +572,9 @@ while running:
                         locked_doors[("Kitchen", direction)] = True
 
         if wine_cellar_challenge_started:
-            fireball_timer, dodged_fireballs, dodge_goal_achieved, player_dead = fireball_challenge_logic(
-                current_room, player, fireballs, fireball_timer, dodged_fireballs, dodge_target, dodge_goal_achieved)
+            fireball_timer, dodged_fireballs, dodge_goal_achieved, health, player_dead = fireball_challenge_logic(
+                current_room, player, fireballs, fireball_timer, dodged_fireballs, 
+                dodge_target, dodge_goal_achieved, player_sprite, SCREEN_HEIGHT, health)
             fireballs.draw(screen)
 
             if player_dead:

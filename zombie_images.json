@@ -1,0 +1,12 @@
+{
+    "left": [
+        "zombie_left.png",
+        "zleft_run1.png",
+        "zleft_run2.png"
+    ],
+    "right": [
+        "zombie_right.png",
+        "zright_run1.png",
+        "zright_run2.png"
+    ]
+}

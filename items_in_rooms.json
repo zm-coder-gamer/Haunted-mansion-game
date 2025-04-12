@@ -1,0 +1,45 @@
+{
+    "Grand Entrance": [
+      {
+        "rect": { "x": 100, "y": 100, "width": 30, "height": 30 },
+        "item": "health_potion"
+      }
+    ],
+    "Master Bedroom": [
+      {
+        "rect": { "x": 500, "y": 400, "width": 30, "height": 30 },
+        "item": "health_potion"
+      }
+    ],
+    "Wine Cellar": [
+      {
+        "rect": { "x": 500, "y": 400, "width": 30, "height": 30 },
+        "item": "health_potion"
+      }
+    ],
+    "Guest Bedroom": [
+      {
+        "rect": { "x": 120, "y": 120, "width": 30, "height": 30 },
+        "item": "key"
+      }
+    ],
+    "Torture Chamber": [
+      {
+        "rect": { "x": 450, "y": 450, "width": 30, "height": 30 },
+        "item": "key"
+      }
+    ],
+    "Attic": [
+      {
+        "rect": { "x": 300, "y": 200, "width": 30, "height": 30 },
+        "item": "speed_potion"
+      }
+    ],
+    "Pantry": [
+      {
+        "rect": { "x": 450, "y": 350, "width": 30, "height": 30 },
+        "item": "speed_potion"
+      }
+    ]
+  }
+  
