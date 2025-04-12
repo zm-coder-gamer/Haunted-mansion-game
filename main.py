@@ -14,34 +14,81 @@ from utility_lib import load_and_scale_character_images, load_items_in_rooms
 
 # Initialize pygame
 # Initialize all imported Pygame modules
+
+# === Load Game Configuration ===
+with open("config.json", "r") as config_file:
+    game_config = json.load(config_file)
+
+SCREEN_WIDTH = game_config["screen"]["width"]
+SCREEN_HEIGHT = game_config["screen"]["height"]
+wall_thickness = game_config["screen"]["wall_thickness"]
+
+player_width = game_config["player"]["width"]
+player_height = game_config["player"]["height"]
+player = pygame.Rect(game_config["player"]["start_x"], game_config["player"]["start_y"], player_width, player_height)
+
+base_player_speed = game_config["player"]["base_speed"]
+player_speed = base_player_speed
+speed_boost_active = False
+speed_boost_end_time = 0
+knockback_force = game_config["player"]["knockback_force"]
+health = game_config["player"]["max_health"]
+player_anim_delay = game_config["player"]["anim_delay"]
+
+max_inventory_slots = game_config["inventory"]["max_slots"]
+cursor_speed = game_config["inventory"]["cursor_speed"]
+inventory_cooldown = game_config["inventory"]["cooldown"]
+
+zombie_anim_delay = game_config["zombie"]["anim_delay"]
+zombie_challenge_duration = game_config["zombie"]["challenge_duration"]
+
+ghost_anim_delay = game_config["ghost"]["anim_delay"]
+ghost_challenge_duration = game_config["ghost"]["challenge_duration"]
+
+dodge_target = game_config["fireball_challenge"]["dodge_target"]
+acid_dodge_target = game_config["acid_challenge"]["dodge_target"]
+
+# === End of Game Config === #
+
 pygame.init()
 
 # === Game Window Setup ===
 # Define the screen size and create a display surface
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 600
+
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Haunted Mansion")
 
+# Read the game config
+with open("config.json", "r") as config_file:
+    config = json.load(config_file)
+
 # Fireball Challenge State
 fireballs = pygame.sprite.Group()
-fireball_timer = 0
-dodged_fireballs = 0
-dodge_target = 100
-dodge_goal_achieved = False
-# Fireball Challenge Tracking for Wine Cellar
-wine_cellar_challenge_started = False
-wine_cellar_entry_time = None
+
+# Extract fireball challenge state values from config
+fireball_config = config["fireball_challenge"]["fireball_challenge_state"]
+
+fireball_timer = fireball_config["fireball_timer"]
+dodged_fireballs = fireball_config["dodged_fireballs"]
+dodge_target = fireball_config["dodge_target"]
+dodge_goal_achieved = fireball_config["dodge_goal_achieved"]
+wine_cellar_challenge_started = fireball_config["wine_cellar_challenge_started"]
+wine_cellar_entry_time = fireball_config["wine_cellar_entry_time"]
 
 # === Acid Rain Challenge State ===
-acid_drops = pygame.sprite.Group()
-acid_timer = 0
-acid_dodged = 0
-acid_dodge_target = 100
-acid_challenge_started = False
-acid_challenge_completed = False
-acid_challenge_entry_time = None
 
-current_room = "Grand Entrance" # Player Enters the Mansion
+# Extract acid rain challenge state values from config
+acid_rain_config = config["acid_challenge"]["acid_challenge_state"]
+acid_drops = pygame.sprite.Group()
+
+acid_timer = acid_rain_config["acid_timer"]
+acid_dodged = acid_rain_config["acid_dodged"]
+acid_dodge_target = acid_rain_config["acid_dodge_target"]
+acid_challenge_started = acid_rain_config["acid_challenge_started"]
+acid_challenge_completed = acid_rain_config["acid_challenge_completed"]
+acid_challenge_entry_time = acid_rain_config["acid_challenge_entry_time"]
+
+current_room = "Exit Gate" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
@@ -205,7 +252,6 @@ inventory_key_pressed = False
 e_key_was_pressed = False  # Used to debounce the E key
 show_inventory_hint = True
 game_start_time = time.time()
-
 clock = pygame.time.Clock()
 
 # Main game loop
