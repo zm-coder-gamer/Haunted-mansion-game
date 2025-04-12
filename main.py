@@ -136,13 +136,17 @@ player_anim_timer = 0
 player_anim_delay = 200  # milliseconds
 
 # Player setup
+player_setup = config["player_setup"]
+
+# Access individual values if needed
+player_rect_values = player_setup["player"]["pygame_rect"]  # [80, 275, 70, 70]
+base_player_speed = player_setup["base_player_speed"]
+speed_boost_active = player_setup["speed_boost_active"]
+speed_boost_end_time = player_setup["speed_boost_end_time"]
+health = player_setup["health"]
+player_speed = base_player_speed
 player = pygame.Rect(80, 275, 70, 70)
 player_sprite = PlayerSprite(player)
-base_player_speed = 10
-player_speed = base_player_speed
-speed_boost_active = False
-speed_boost_end_time = 0
-health = 10000
 
 # Helper to get adjusted speed per room
 def get_enemy_speed(entity_type, room):
