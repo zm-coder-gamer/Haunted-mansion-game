@@ -10,7 +10,7 @@ from my_lib import create_doors
 from player_sprite import PlayerSprite
 from challenges import fireball_challenge_logic
 from acid_drop import AcidDrop
-from utility_lib import load_and_scale_character_images
+from utility_lib import load_and_scale_character_images, load_items_in_rooms
 
 # Initialize pygame
 # Initialize all imported Pygame modules
@@ -41,7 +41,7 @@ acid_challenge_started = False
 acid_challenge_completed = False
 acid_challenge_entry_time = None
 
-current_room = "Torture Chamber" # Player Enters the Mansion
+current_room = "Grand Entrance" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
@@ -54,7 +54,6 @@ with open("rooms_data.json", "r") as file:
 # Add Winner Room manually to room_exits
 room_exits["Exit Gate"]["east"] = "Winner Room"
 room_exits["Winner Room"] = {"west": "Exit Gate"}
-
 
 # Load room images
 all_rooms = room_exits.keys()
@@ -159,15 +158,12 @@ inventory_cursor = pygame.Rect(10, 10, 40, 40)
 cursor_speed = 5
 
 # Items in rooms
-items_in_rooms = {
-    "Grand Entrance": [(pygame.Rect(100, 100, 30, 30), "health_potion")],
-    "Master Bedroom": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
-    "Wine Cellar": [(pygame.Rect(500, 400, 30, 30), "health_potion")],
-    "Guest Bedroom": [(pygame.Rect(120, 120, 30, 30), "key")],
-    "Torture Chamber": [(pygame.Rect(450, 450, 30, 30), "key")],
-    "Attic": [(pygame.Rect(300, 200, 30, 30), "speed_potion")],
-    "Pantry": [(pygame.Rect(450, 350, 30, 30), "speed_potion")]
-}
+with open("items_in_rooms.json", "r") as file:
+    data = json.load(file)
+
+
+
+items_in_rooms = load_items_in_rooms(data)
 
 # Locked doors setup
 locked_doors = {
