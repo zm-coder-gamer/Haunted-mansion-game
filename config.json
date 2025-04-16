@@ -67,5 +67,12 @@
             "acid_challenge_completed" : false,
             "acid_challenge_entry_time" : null
         }
+    },
+    "player_setup":{
+        "player" : {"pygame_rect":[80, 275, 70, 70]},
+        "base_player_speed" : 4,
+        "speed_boost_active" : false,
+        "speed_boost_end_time" : 0,
+        "health" : 10
     }
 }
