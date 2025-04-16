@@ -88,6 +88,7 @@ acid_challenge_started = acid_rain_config["acid_challenge_started"]
 acid_challenge_completed = acid_rain_config["acid_challenge_completed"]
 acid_challenge_entry_time = acid_rain_config["acid_challenge_entry_time"]
 
+
 current_room = "Grand Entrance" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
@@ -137,7 +138,6 @@ player_anim_delay = 200  # milliseconds
 
 # Player setup
 player_setup = config["player_setup"]
-
 # Access individual values if needed
 player_rect_values = player_setup["player"]["pygame_rect"]  # [80, 275, 70, 70]
 base_player_speed = player_setup["base_player_speed"]
