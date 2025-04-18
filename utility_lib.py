@@ -24,3 +24,12 @@ def load_items_in_rooms(data):
             item = item_data["item"]
             items_in_rooms[room].append((rect, item))
     return items_in_rooms
+
+# Helper to get adjusted speed per room
+# ??? static numbers
+def get_enemy_speed(entity_type, room):
+    if entity_type == "zombie":
+        return 2.01 if room == "Servants Quarters" else 3.2
+    elif entity_type == "ghost":
+        return 2.02 if room == "Basement Storage" else 3.3
+    return 3

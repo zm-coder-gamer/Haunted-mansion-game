@@ -1,7 +1,7 @@
 # === Haunted Mansion: Main Game File ===
 # This file contains the full logic of the game including rendering,
 # player control, enemy behavior, inventory, item interaction, and challenges.
-
+#hidsbfpiug vsedifufhg 
 import pygame
 import json
 import time
@@ -10,7 +10,7 @@ from my_lib import create_doors
 from player_sprite import PlayerSprite
 from challenges import fireball_challenge_logic
 from acid_drop import AcidDrop
-from utility_lib import load_and_scale_character_images, load_items_in_rooms
+from utility_lib import load_and_scale_character_images, load_items_in_rooms, get_enemy_speed
 
 # Initialize pygame
 # Initialize all imported Pygame modules
@@ -35,6 +35,22 @@ knockback_force = game_config["player"]["knockback_force"]
 health = game_config["player"]["max_health"]
 player_anim_delay = game_config["player"]["anim_delay"]
 
+# Load JSON data for player images
+player_images = load_and_scale_character_images("player_images.json", 70)
+
+# Animation state
+player_facing = "front"
+player_frame = 0
+player_anim_timer = 0
+player_anim_delay = 200  # milliseconds
+
+# Player Attribute Setup
+base_player_speed = 4
+player_speed = base_player_speed
+speed_boost_active = False
+speed_boost_end_time = 0
+health = 10
+
 max_inventory_slots = game_config["inventory"]["max_slots"]
 cursor_speed = game_config["inventory"]["cursor_speed"]
 inventory_cooldown = game_config["inventory"]["cooldown"]
@@ -42,15 +58,47 @@ inventory_cooldown = game_config["inventory"]["cooldown"]
 zombie_anim_delay = game_config["zombie"]["anim_delay"]
 zombie_challenge_duration = game_config["zombie"]["challenge_duration"]
 
+# Load and scale zombie images
+zombie_images = load_and_scale_character_images("zombie_images.json", 100)
+zombies = {}
+# Zombie animation state
+zombie_frame = 0
+zombie_anim_timer = 0
+zombie_anim_delay = 300
+zombie_facing = {}  # tracks zombie facing per room
+# ??? dynamic time variable
+room_entry_time = time.time()
+knockback_force = 50
+
 ghost_anim_delay = game_config["ghost"]["anim_delay"]
 ghost_challenge_duration = game_config["ghost"]["challenge_duration"]
 
-dodge_target = game_config["fireball_challenge"]["dodge_target"]
-acid_dodge_target = game_config["acid_challenge"]["dodge_target"]
+ghost_images = load_and_scale_character_images("ghost_images.json", 100)
+ghosts = {}
+# Load ghost images (hovering cycle)
+ghost_frame = 0
+ghost_anim_timer = 0
+ghost_anim_delay = 200
 
-# === End of Game Config === #
+zombie_rooms = game_config["zombie"]["challenge_rooms"]
+ghost_rooms = game_config["ghost"]["challenge_rooms"]
 
-pygame.init()
+for room in zombie_rooms:
+    zombies[room] = [pygame.Rect(420, 290, 85, 85)]
+
+for room in ghost_rooms:
+    ghosts[room] = [pygame.Rect(420, 290, 85, 85)]
+
+# === Challenge Room Survival Timers ===
+zombie_challenge_started = False
+zombie_challenge_completed = False
+zombie_challenge_start_time = None
+zombie_challenge_duration = 20  # seconds
+
+ghost_challenge_started = False
+ghost_challenge_completed = False
+ghost_challenge_start_time = None
+ghost_challenge_duration = 20  # seconds
 
 # === Game Window Setup ===
 # Define the screen size and create a display surface
@@ -62,8 +110,8 @@ pygame.display.set_caption("Haunted Mansion")
 with open("config.json", "r") as config_file:
     config = json.load(config_file)
 
-# Fireball Challenge State
-fireballs = pygame.sprite.Group()
+dodge_target = game_config["fireball_challenge"]["dodge_target"]
+acid_dodge_target = game_config["acid_challenge"]["dodge_target"]
 
 # Extract fireball challenge state values from config
 fireball_config = config["fireball_challenge"]["fireball_challenge_state"]
@@ -75,11 +123,8 @@ dodge_goal_achieved = fireball_config["dodge_goal_achieved"]
 wine_cellar_challenge_started = fireball_config["wine_cellar_challenge_started"]
 wine_cellar_entry_time = fireball_config["wine_cellar_entry_time"]
 
-# === Acid Rain Challenge State ===
-
 # Extract acid rain challenge state values from config
 acid_rain_config = config["acid_challenge"]["acid_challenge_state"]
-acid_drops = pygame.sprite.Group()
 
 acid_timer = acid_rain_config["acid_timer"]
 acid_dodged = acid_rain_config["acid_dodged"]
@@ -90,10 +135,20 @@ acid_challenge_entry_time = acid_rain_config["acid_challenge_entry_time"]
 
 current_room = "Grand Entrance" # Player Enters the Mansion
 previous_room = None  # Tracks the last room before Inventory
+
+# Inventory setup
+inventory = []
+max_inventory_slots = 15
+cursor_speed = 5
 last_inventory_toggle = 0  # Tracks last time inventory was toggled
 inventory_cooldown = 300  # milliseconds
 
-# Room dictionaries, values are stored as tuples
+# Items in rooms
+with open("items_in_rooms.json", "r") as file:
+    data = json.load(file)
+
+items_in_rooms = load_items_in_rooms(data)
+
 # Load JSON data
 with open("rooms_data.json", "r") as file:
     room_exits = json.load(file)
@@ -101,116 +156,8 @@ with open("rooms_data.json", "r") as file:
 # Add Winner Room manually to room_exits
 room_exits["Exit Gate"]["east"] = "Winner Room"
 room_exits["Winner Room"] = {"west": "Exit Gate"}
-
-# Load room images
-all_rooms = room_exits.keys()
-rooms = {}
-for room in all_rooms:
-    rooms[room] = pygame.transform.scale(pygame.image.load("images/"+room+".png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
-
-rooms["Winner Room"] = pygame.transform.scale(pygame.image.load("images/Winner Room.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
 doors = create_doors(room_exits)
-
-# Room boundaries
 wall_thickness = 30
-room_bounds = [
-    pygame.Rect(0, 0, SCREEN_WIDTH, wall_thickness),
-    pygame.Rect(0, SCREEN_HEIGHT - wall_thickness, SCREEN_WIDTH, wall_thickness),
-    pygame.Rect(0, 0, wall_thickness, SCREEN_HEIGHT),
-    pygame.Rect(SCREEN_WIDTH - wall_thickness, 0, wall_thickness, SCREEN_HEIGHT)
-]
-
-# Load item images
-health_potion_img = pygame.image.load("images/health_potion.png")
-health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
-key_img = pygame.image.load("images/key.png")
-key_img = pygame.transform.scale(key_img, (50, 50))
-
-# Load JSON data for player images
-player_images = load_and_scale_character_images("player_images.json", 70)
-
-# Animation state
-player_facing = "front"
-player_frame = 0
-player_anim_timer = 0
-player_anim_delay = 200  # milliseconds
-
-# Player setup
-player = pygame.Rect(80, 275, 70, 70)
-player_sprite = PlayerSprite(player)
-base_player_speed = 4
-player_speed = base_player_speed
-speed_boost_active = False
-speed_boost_end_time = 0
-health = 10
-
-# Helper to get adjusted speed per room
-def get_enemy_speed(entity_type, room):
-    if entity_type == "zombie":
-        return 2.01 if room == "Servants Quarters" else 3.2
-    elif entity_type == "ghost":
-        return 2.02 if room == "Basement Storage" else 3.3
-    return 3
-
-# Load and scale zombie images
-zombie_images = load_and_scale_character_images("zombie_images.json", 100)
-
-# zombie setup
-zombie_rooms = ["Main Hallway", "Torture Chamber", "Servants Quarters", "Wine Cellar", "Gallery", "Library"]
-zombies = {}
-
-for room in zombie_rooms:
-    zombies[room] = [pygame.Rect(420, 290, 85, 85)]
-
-# Zombie animation state
-zombie_frame = 0
-zombie_anim_timer = 0
-zombie_anim_delay = 300
-zombie_facing = {}  # tracks zombie facing per room
-room_entry_time = time.time()
-knockback_force = 50
-
-# Load ghost images (hovering cycle)
-ghost_images = load_and_scale_character_images("ghost_images.json", 100)
-ghost_frame = 0
-ghost_anim_timer = 0
-ghost_anim_delay = 200
-
-ghosts = {
-    "Ballroom": [pygame.Rect(420, 300, 80, 80)],
-    "Wine Cellar": [pygame.Rect(420, 300, 80, 80)],
-    "Bathroom": [pygame.Rect(420, 300, 80, 80)],
-    "Dining Room": [pygame.Rect(420, 300, 80, 80)],
-    "Study": [pygame.Rect(420, 300, 80, 80)]
-}
-
-# Inventory setup
-inventory = []
-max_inventory_slots = 20
-inventory_cursor = pygame.Rect(10, 10, 40, 40)
-cursor_speed = 5
-
-# Load item images
-health_potion_img = pygame.image.load("images/health_potion.png")
-health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
-speed_potion_img = pygame.image.load("images/speed_potion.png")
-speed_potion_img = pygame.transform.scale(speed_potion_img, (40, 40))
-key_img = pygame.image.load("images/key.png")
-key_img = pygame.transform.scale(key_img, (40, 40))
-
-# Inventory setup
-inventory = []
-max_inventory_slots = 20
-inventory_cursor = pygame.Rect(10, 10, 40, 40)
-cursor_speed = 5
-
-# Items in rooms
-with open("items_in_rooms.json", "r") as file:
-    data = json.load(file)
-
-
-
-items_in_rooms = load_items_in_rooms(data)
 
 # Locked doors setup
 locked_doors = {
@@ -228,16 +175,50 @@ for room, door_list in doors.items():
         else:
             door_list[i] = (direction, rect, False)  # unlocked
 
-# === Challenge Room Survival Timers ===
-zombie_challenge_started = False
-zombie_challenge_completed = False
-zombie_challenge_start_time = None
-zombie_challenge_duration = 20  # seconds
+# === End of Game Config === #
 
-ghost_challenge_started = False
-ghost_challenge_completed = False
-ghost_challenge_start_time = None
-ghost_challenge_duration = 20  # seconds
+pygame.init()
+
+# Fireball Challenge State
+fireballs = pygame.sprite.Group()
+
+# === Acid Rain Challenge State === #
+acid_drops = pygame.sprite.Group()
+
+# Load room images
+all_rooms = room_exits.keys()
+rooms = {}
+for room in all_rooms:
+    rooms[room] = pygame.transform.scale(pygame.image.load("images/"+room+".png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+rooms["Winner Room"] = pygame.transform.scale(pygame.image.load("images/Winner Room.png"), (SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Room boundaries
+room_bounds = [
+    pygame.Rect(0, 0, SCREEN_WIDTH, wall_thickness),
+    pygame.Rect(0, SCREEN_HEIGHT - wall_thickness, SCREEN_WIDTH, wall_thickness),
+    pygame.Rect(0, 0, wall_thickness, SCREEN_HEIGHT),
+    pygame.Rect(SCREEN_WIDTH - wall_thickness, 0, wall_thickness, SCREEN_HEIGHT)
+]
+
+# Load item images
+health_potion_img = pygame.image.load("images/health_potion.png")
+health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
+key_img = pygame.image.load("images/key.png")
+key_img = pygame.transform.scale(key_img, (50, 50))
+
+# Player Pygame setup
+player = pygame.Rect(80, 275, 70, 70)
+player_sprite = PlayerSprite(player)
+
+# Load item images
+health_potion_img = pygame.image.load("images/health_potion.png")
+health_potion_img = pygame.transform.scale(health_potion_img, (40, 40))
+speed_potion_img = pygame.image.load("images/speed_potion.png")
+speed_potion_img = pygame.transform.scale(speed_potion_img, (40, 40))
+key_img = pygame.image.load("images/key.png")
+key_img = pygame.transform.scale(key_img, (40, 40))
+inventory_cursor = pygame.Rect(10, 10, 40, 40)
 
 running = True
 
