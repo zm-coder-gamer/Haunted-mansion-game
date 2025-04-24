@@ -23,6 +23,8 @@
     },
     "zombie": {
         "anim_delay": 300,
+        "anim_timer": 0,
+        "frame": 0,
         "challenge_duration": 20,
         "challenge_rooms": [
             "Main Hallway",
@@ -35,6 +37,8 @@
     },
     "ghost": {
         "anim_delay": 200,
+        "anim_timer": 0,
+        "frame": 0,
         "challenge_duration": 20,
         "challenge_rooms": [
             "Ballroom",

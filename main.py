@@ -62,9 +62,9 @@ zombie_challenge_duration = game_config["zombie"]["challenge_duration"]
 zombie_images = load_and_scale_character_images("zombie_images.json", 100)
 zombies = {}
 # Zombie animation state
-zombie_frame = 0
-zombie_anim_timer = 0
-zombie_anim_delay = 300
+zombie_frame = game_config["zombie"]["frame"]
+zombie_anim_timer = game_config["zombie"]["anim_timer"]
+zombie_anim_delay = game_config["zombie"]["anim_delay"]
 zombie_facing = {}  # tracks zombie facing per room
 # ??? dynamic time variable
 room_entry_time = time.time()
@@ -76,9 +76,9 @@ ghost_challenge_duration = game_config["ghost"]["challenge_duration"]
 ghost_images = load_and_scale_character_images("ghost_images.json", 100)
 ghosts = {}
 # Load ghost images (hovering cycle)
-ghost_frame = 0
-ghost_anim_timer = 0
-ghost_anim_delay = 200
+ghost_frame = game_config["ghost"]["frame"]
+ghost_anim_timer = game_config["ghost"]["anim_timer"]
+ghost_anim_delay = game_config["ghost"]["anim_delay"]
 
 zombie_rooms = game_config["zombie"]["challenge_rooms"]
 ghost_rooms = game_config["ghost"]["challenge_rooms"]
